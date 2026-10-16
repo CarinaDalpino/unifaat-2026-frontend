@@ -24,7 +24,7 @@ Durante todo o primeiro bimestre a palavra de ordem foi estático. O HTML, o CSS
 
 O contrário de estático é dinâmico: conteúdo que só existe depois que o servidor executa código. Isso não é novidade para a turma. No semestre passado, em Desenvolvimento Web, cada rota da API montava um JSON a partir de dados do banco e devolvia como resposta. Esse JSON não existia em disco: era gerado na hora, a cada requisição.
 
-Esta aula começa juntando as duas pontas. O HTML, o arquivo inicial de qualquer página no navegador, também pode vir dinamicamente na resposta, exatamente como o JSON vinha. Isso abre a porta para a camada que faltava no nosso backend: a View, o V do MVC. Models e Controllers já fazem parte do projeto desde o semestre passado. Com a View, o HTML passa a viajar pelo ciclo de vida HTTP completo, passando por middlewares, controladores e camada de dados, e isso permite coisas que eram impossíveis com estático, como proteger uma página inteira com sessão antes de ela sair do servidor. Para escrever views sem sofrimento, vamos apresentar o EJS.
+Esta aula começa juntando as duas pontas. O HTML, o arquivo inicial de qualquer página no navegador, também pode vir dinamicamente na resposta, exatamente como o JSON vinha. Isso abre a porta para a camada que faltava no nosso projeto de desenvolvimento web: a View, o V do MVC. Models e Controllers já fazem parte do projeto desde o semestre passado. Com a View, o HTML passa a viajar pelo ciclo de vida HTTP completo, passando por middlewares, controladores e camada de dados, e isso permite coisas que eram impossíveis com estático, como proteger uma página inteira com sessão antes de ela sair do servidor. Para escrever views sem sofrimento, vamos apresentar o EJS.
 
 Na segunda parte, a aula sai do HTML e vai para a busca. Filtros complexos por vários campos ao mesmo tempo, com texto livre, em uma base grande, são caros para o banco relacional. Para isso existe o Elasticsearch: outro tipo de banco de dados, especializado em busca. Ele não substitui o Postgres. Ele trabalha ao lado dele, como um auxiliar de busca, em um modelo de duas etapas: a busca complexa acontece no Elasticsearch, que devolve só os ids, e esses ids voltam para o Postgres em um `WHERE IN` simples pela chave primária.
 
@@ -46,7 +46,7 @@ Quando o navegador pede `/login`, o Nginx procura `login.html`, depois `login`, 
 
 - **Está pronto antes da requisição chegar:** é um arquivo no disco;
 - **É igual para todo mundo:** o usuário A e o usuário B recebem exatamente os mesmos bytes;
-- **Não exige processamento:** nenhum código roda no servidor para entregá-lo.
+- **Não exige processamento:** nenhum código roda no servidor backend para entregá-lo.
 
 Tudo que o frontend tinha de dinâmico (lista de tarefas, nome do usuário logado) chegava depois, por JavaScript: o navegador recebia o HTML estático vazio, o JS rodava, chamava a API com Axios e preenchia o DOM.
 
