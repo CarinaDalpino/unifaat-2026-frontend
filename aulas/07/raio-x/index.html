@@ -18,7 +18,7 @@
   <p class="meta">
     <span><i class="fa-solid fa-folder"></i> src/ · docker/ · docker-compose.yml</span>
     <span><i class="fa-solid fa-calendar-days"></i> 19/10/2026</span>
-    <span><i class="fa-solid fa-wrench"></i> 11 etapas até agora</span>
+    <span><i class="fa-solid fa-wrench"></i> 12 etapas até agora</span>
   </p>
 </header>
 
@@ -1931,7 +1931,7 @@ existe no Postgres?  sim → PUT    /users/_doc/{id}   <span class="comment">// 
       <span class="icon"><i class="fa-solid fa-list-check"></i></span>
       <div>
         <strong>O que ainda falta:</strong>
-        <p>criar o índice <code class="inline">users</code> com <strong>mapping</strong> (sem ele, o Elastic adivinha os tipos no primeiro <code class="inline">PUT</code>: <code class="inline">state</code> e <code class="inline">city</code> precisam ser <code class="inline">keyword</code> para filtro exato, <code class="inline">birth_date</code> <code class="inline">date</code>, e <code class="inline">bio</code> com analisador de português) e a <strong>carga inicial</strong> com <code class="inline">_bulk</code>, porque os usuários que já existem só entram no Elastic quando forem alterados.</p>
+        <p>criar o índice <code class="inline">users</code> com <strong>mapping</strong> (sem ele, o Elastic adivinha os tipos no primeiro <code class="inline">PUT</code>: <code class="inline">state</code> e <code class="inline">city</code> precisam ser <code class="inline">keyword</code> para filtro exato, <code class="inline">birth_date</code> <code class="inline">date</code>, e <code class="inline">bio</code> com analisador de português). A <strong>carga inicial</strong> dos usuários que já existem vem na etapa 11 (seed com <code class="inline">_bulk</code>).</p>
       </div>
     </div>
 
@@ -1945,6 +1945,141 @@ existe no Postgres?  sim → PUT    /users/_doc/{id}   <span class="comment">// 
   <div class="entry">
     <div class="entry-dot">11</div>
     <div class="entry-date">Etapa 11</div>
+    <h2>Seed pré-popula o Elasticsearch (<code class="inline">_bulk</code>)</h2>
+    <p class="sub">O <code class="inline">seed</code> já criava os 40 usuários no Postgres. Agora ele termina copiando todos para o índice <code class="inline">users</code> do Elastic, numa requisição só. Sem isso, a busca começaria vazia: só entravam no índice os usuários criados ou editados depois da etapa 10.</p>
+
+    <div class="tree">docker compose run --rm nodecommand-container seed
+    ↓
+1) Postgres: INSERT dos 40 usuários (com perfil)            <span class="comment">// como antes</span>
+    ↓
+2) UserModel.findAll()                                     <span class="comment">// lê de volta da fonte da verdade</span>
+    ↓
+3) POST /_bulk?refresh=true   (NDJSON, 2 linhas por usuário)
+   { "index": { "_index": "users", "_id": "1" } }
+   { "name": "Alice Souza", "city": "Atibaia", "state": "SP", ... }
+   { "index": { "_index": "users", "_id": "2" } }
+   { "name": "Bruno Lima", ... }
+    ↓
+<span class="new">✓ 40 usuários indexados no Elasticsearch</span></div>
+
+    <h3 class="block-title">Service: carga em lote</h3>
+
+    <div class="diff">
+      <div class="diff-head">src/app/Services/UserElasticService.js (nova função bulkIndex + export)</div>
+      <div class="line add">+ /**</div>
+      <div class="line add">+  * Carga em lote: indexa vários usuários numa requisição só (POST /_bulk).</div>
+      <div class="line add">+  * O corpo é NDJSON: uma linha de ação ({ index: { _id } }) e uma linha de documento,</div>
+      <div class="line add">+  * por usuário. "index" também é upsert: rodar de novo só substitui os documentos.</div>
+      <div class="line add">+  * refresh=true: os documentos já ficam visíveis para a busca quando a resposta volta.</div>
+      <div class="line add">+  */</div>
+      <div class="line add">+ async function bulkIndex(users) {</div>
+      <div class="line add">+     if (users.length === 0) {</div>
+      <div class="line add">+         return { indexed: 0, errors: false };</div>
+      <div class="line add">+     }</div>
+      <div class="line add">+ </div>
+      <div class="line add">+     const lines = [];</div>
+      <div class="line add">+ </div>
+      <div class="line add">+     for (const user of users) {</div>
+      <div class="line add">+         lines.push(JSON.stringify({ index: { _index: INDEX, _id: String(user.id) } }));</div>
+      <div class="line add">+         lines.push(JSON.stringify(toDocument(user)));</div>
+      <div class="line add">+     }</div>
+      <div class="line add">+ </div>
+      <div class="line add">+     // O _bulk exige uma quebra de linha no final</div>
+      <div class="line add">+     const body = lines.join('\n') + '\n';</div>
+      <div class="line add">+ </div>
+      <div class="line add">+     const { data } = await elastic.post('/_bulk?refresh=true', body, {</div>
+      <div class="line add">+         headers: { 'Content-Type': 'application/x-ndjson' }</div>
+      <div class="line add">+     });</div>
+      <div class="line add">+ </div>
+      <div class="line add">+     return { indexed: data.items.length, errors: data.errors };</div>
+      <div class="line add">+ }</div>
+      <div class="line ctx"></div>
+      <div class="line ctx">  export default {</div>
+      <div class="line ctx">      ...</div>
+      <div class="line ctx">      sync,</div>
+      <div class="line add">+     bulkIndex,</div>
+      <div class="line ctx">      ...</div>
+    </div>
+
+    <h3 class="block-title">O seed chama a carga no fim</h3>
+
+    <div class="diff">
+      <div class="diff-head">src/app/Commands/SeedCommand.js</div>
+      <div class="line ctx">  import path from 'node:path'</div>
+      <div class="line ctx">  import { pathToFileURL } from 'node:url'</div>
+      <div class="line ctx">  import postgres from '../../database/connections/postgres.js'</div>
+      <div class="line add">+ import sequelize from '../../database/connections/sequelize.js'</div>
+      <div class="line ctx">  import CONSTANTS from '../../bootstrap/config.js'</div>
+      <div class="line add">+ import UserModel from '../Models/UserModel.js'</div>
+      <div class="line add">+ import UserElasticService from '../Services/UserElasticService.js'</div>
+      <div class="line ctx"></div>
+      <div class="line ctx">  export default {</div>
+      <div class="line ctx">      name: 'seed',</div>
+      <div class="line ctx">              console.log('Seed concluída com sucesso.')</div>
+      <div class="line ctx">          } catch (error) {</div>
+      <div class="line ctx">              await postgres.query('ROLLBACK')</div>
+      <div class="line add">+             await postgres.close()</div>
+      <div class="line ctx">              throw error</div>
+      <div class="line add">+         }</div>
+      <div class="line add">+ </div>
+      <div class="line add">+         await postgres.close()</div>
+      <div class="line add">+ </div>
+      <div class="line add">+         // Pré-população do Elasticsearch: todos os usuários do Postgres (fonte da verdade)</div>
+      <div class="line add">+         // vão para o índice "users" de uma vez, pelo _bulk</div>
+      <div class="line add">+         try {</div>
+      <div class="line add">+             const users = await UserModel.findAll()</div>
+      <div class="line add">+             const result = await UserElasticService.bulkIndex(users)</div>
+      <div class="line add">+ </div>
+      <div class="line add">+             if (result.errors) {</div>
+      <div class="line add">+                 throw new Error('O Elasticsearch recusou parte dos documentos do _bulk')</div>
+      <div class="line add">+             }</div>
+      <div class="line add">+ </div>
+      <div class="line add">+             console.log(`✓ ${result.indexed} usuários indexados no Elasticsearch`)</div>
+      <div class="line ctx">          } finally {</div>
+      <div class="line rem">-             await postgres.close()</div>
+      <div class="line add">+             await sequelize.close()</div>
+      <div class="line ctx">          }</div>
+      <div class="line ctx">      }</div>
+      <div class="line ctx">  }</div>
+    </div>
+
+    <div class="why">
+      <div class="why-card">
+        <h4>Por que _bulk</h4>
+        <p>Uma requisição só para todos os usuários, em vez de 40 <code class="inline">PUT</code>. O corpo é <strong>NDJSON</strong>: um JSON por linha, alternando a ação (<code class="inline">index</code> com o <code class="inline">_id</code>) e o documento. O <code class="inline">Content-Type</code> é <code class="inline">application/x-ndjson</code>, e o corpo precisa terminar com quebra de linha.</p>
+      </div>
+      <div class="why-card">
+        <h4>Rodar de novo não duplica</h4>
+        <p><code class="inline">index</code> no <code class="inline">_bulk</code> é upsert, como o <code class="inline">PUT /users/_doc/{id}</code> da etapa 10: o <code class="inline">_id</code> é a chave primária do Postgres, então rodar o seed outra vez só substitui os documentos.</p>
+      </div>
+      <div class="why-card">
+        <h4>refresh=true</h4>
+        <p>Por padrão o Elastic deixa um documento visível na busca depois do próximo refresh (~1 s). Na carga inicial pedimos o refresh na hora: quando o seed termina, a busca já enxerga todo mundo.</p>
+      </div>
+      <div class="why-card">
+        <h4>Fechar as duas conexões</h4>
+        <p>O seed agora usa o pool <code class="inline">pg</code> (INSERTs) e o Sequelize (<code class="inline">UserModel.findAll</code>). Os dois são fechados no fim; senão o comando não termina. O documento é o mesmo <code class="inline">toDocument()</code> da etapa 10, então a senha também não vai para o Elastic.</p>
+      </div>
+    </div>
+
+    <div class="callout">
+      <span class="icon"><i class="fa-solid fa-terminal"></i></span>
+      <div>
+        <strong>Na ordem:</strong>
+        <p><code class="inline">docker compose run --rm nodecommand-container migrate</code> e depois <code class="inline">docker compose run --rm nodecommand-container seed</code>. O seed agora também precisa do Elasticsearch no ar.</p>
+      </div>
+    </div>
+
+    <div class="ok">
+      <strong><i class="fa-solid fa-circle-check"></i> Testado:</strong>
+      <p><code class="inline">migrate</code> + <code class="inline">seed</code> em banco vazio → "✓ 40 usuários indexados no Elasticsearch"; <code class="inline">GET /users/_count</code> no Elastic → 40, o mesmo número do Postgres. O Elastic criou o mapping sozinho: textos como <code class="inline">text</code> + subcampo <code class="inline">keyword</code>, <code class="inline">birth_date</code>/<code class="inline">created_at</code> como <code class="inline">date</code>, <code class="inline">is_active</code> como <code class="inline">boolean</code>.</p>
+    </div>
+  </div>
+
+  <!-- ETAPA 12 -->
+  <div class="entry">
+    <div class="entry-dot">12</div>
+    <div class="entry-date">Etapa 12</div>
     <h2>API de busca: <code class="inline">POST /users/search</code></h2>
     <p class="sub">A busca em duas etapas da aula, no código: o Elasticsearch resolve os filtros (texto como <code class="inline">LIKE '%valor%'</code>) e devolve só os ids; o Postgres traz os usuários pela chave primária com <code class="inline">WHERE id IN</code>.</p>
 
@@ -2194,7 +2329,7 @@ qualquer outro                                     <span class="comment">// 400:
       <span class="icon"><i class="fa-solid fa-triangle-exclamation"></i></span>
       <div>
         <strong>Para a busca achar alguém:</strong>
-        <p>o índice <code class="inline">users</code> precisa existir e estar populado. Hoje só entram os usuários criados/editados depois da etapa 10; falta a carga inicial (<code class="inline">_bulk</code>). E o <code class="inline">wildcard</code> depende do subcampo <code class="inline">.keyword</code> que o mapping dinâmico do Elastic cria sozinho: se o índice ganhar mapping explícito, os campos de texto precisam manter um <code class="inline">keyword</code>.</p>
+        <p>o índice <code class="inline">users</code> precisa existir e estar populado: o <code class="inline">seed</code> faz a carga inicial (etapa 11) e o worker mantém o índice em dia a cada action (etapa 10). E o <code class="inline">wildcard</code> depende do subcampo <code class="inline">.keyword</code> que o mapping dinâmico do Elastic cria sozinho: se o índice ganhar mapping explícito, os campos de texto precisam manter um <code class="inline">keyword</code>.</p>
       </div>
     </div>
 
