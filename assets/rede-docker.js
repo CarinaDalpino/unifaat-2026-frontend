@@ -123,7 +123,7 @@
     ]},
     build: { t: 'Vite pré-compiler (build --watch)', steps: [
       { e: ['m-compiler-resources', 'm-compiler-public'], x: 'Você salva um .ts em ./src/resources no seu PC. O vite-compiler lê em /app/resources (bind mount), compila (vite build --watch) e escreve o resultado em /app/public: o public-volume, um volume interno do Docker.' },
-      { e: ['m-nginx-public', 'm-web-public'], x: 'O mesmo public-volume é /var/www no nginx (que serve os arquivos compilados) e /app/public no nodeweb (que lê o manifest.json para as views achar os nomes com hash).' }
+      { e: ['m-nginx-public'], x: 'O mesmo public-volume é /var/www no nginx, que serve os arquivos compilados.' }
     ]}
 
   };
