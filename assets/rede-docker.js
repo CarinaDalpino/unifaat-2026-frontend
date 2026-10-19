@@ -3,7 +3,7 @@
    num SVG por cima, a partir da posição real de cada elemento (recalculadas
    quando o tamanho muda). Sem else: early return / continue. */
 (function(){
-  var W = 1600;
+  var W = 1800;
   var stage = document.getElementById('stage');
   var svg = document.getElementById('wires');
   var NS = 'http://www.w3.org/2000/svg';
@@ -13,26 +13,32 @@
     items[el.dataset.id] = el;
   });
 
+  /* badges "origem:destino" das pastas montadas, dentro dos containers */
+  var badges = {};
+  Array.prototype.forEach.call(stage.querySelectorAll('[data-mb]'), function(el){
+    badges[el.dataset.mb] = el;
+  });
+
   /* ── conexões ─────────────────────────────────────────────
      kind: port (host → porta publicada → container), net (rede interna),
            vol (montagem de volume/pasta)
      flow (só nas montagens): in = o container lê da pasta/volume,
            out = o container escreve nela, both = lê e escreve
-     points: pontos intermediários no sistema 1600 × 1040 (setas com cotovelo) */
+     points: pontos intermediários no sistema 1800 × 1160 (setas com cotovelo) */
   var EDGES = [
     { id: 'b-8080', from: 'browser', to: 'p8080', kind: 'port' },
     { id: '8080-nginx', from: 'p8080', to: 'nginx', kind: 'port' },
-    { id: 'b-5172', from: 'browser', to: 'p5172', kind: 'port', points: [[78, 678]] },
+    { id: 'b-5172', from: 'browser', to: 'p5172', kind: 'port', points: [[78, 795]] },
     { id: '5172-hmr', from: 'p5172', to: 'vitehmr', kind: 'port' },
-    { id: 'b-15672', from: 'browser', to: 'p15672', kind: 'port', points: [[78, 120], [780, 120]] },
+    { id: 'b-15672', from: 'browser', to: 'p15672', kind: 'port', points: [[78, 120], [1030, 120]] },
     { id: '15672-rabbit', from: 'p15672', to: 'rabbitmq', kind: 'port' },
     { id: 'tools-5672', from: 'tools', to: 'p5672', kind: 'port' },
     { id: '5672-rabbit', from: 'p5672', to: 'rabbitmq', kind: 'port' },
     { id: 'tools-6789', from: 'tools', to: 'p6789', kind: 'port' },
     { id: '6789-pg', from: 'p6789', to: 'postgres', kind: 'port' },
 
-    { id: 'nginx-web', from: 'nginx', to: 'nodeweb', kind: 'net', points: [[720, 440]] },
-    { id: 'web-rabbit', from: 'nodeweb', to: 'rabbitmq', kind: 'net', points: [[790, 560], [790, 360]] },
+    { id: 'nginx-web', from: 'nginx', to: 'nodeweb', kind: 'net', points: [[1040, 465]] },
+    { id: 'web-rabbit', from: 'nodeweb', to: 'rabbitmq', kind: 'net', points: [[1110, 640], [1110, 430]] },
     { id: 'web-pg', from: 'nodeweb', to: 'postgres', kind: 'net' },
     { id: 'web-es', from: 'nodeweb', to: 'elasticsearch', kind: 'net' },
     { id: 'cmd-rabbit', from: 'nodecommand', to: 'rabbitmq', kind: 'net' },
@@ -41,29 +47,27 @@
     { id: 'worker-rabbit', from: 'nodeworker', to: 'rabbitmq', kind: 'net' },
     { id: 'worker-pg', from: 'nodeworker', to: 'postgres', kind: 'net' },
     { id: 'worker-es', from: 'nodeworker', to: 'elasticsearch', kind: 'net' },
-    /* entrega da mensagem (sentido do dado): só aparece nos cenários */
-    { id: 'rabbit-worker', from: 'rabbitmq', to: 'nodeworker', kind: 'net', label: 'fila default → worker', scenarioOnly: true, points: [[845, 360], [1100, 560]] },
 
 
-    { id: 'm-nginx-public', from: 'nginx', to: 'v-public', kind: 'vol', label: '/var/www', flow: 'in' },
-    { id: 'm-nginx-aulas', from: 'nginx', to: 'b-aulas', kind: 'vol', label: '/var/www/aulas', flow: 'in' },
-    { id: 'm-nginx-logs', from: 'nginx', to: 'b-logs', kind: 'vol', label: '/var/log/nginx', flow: 'out' },
-    { id: 'm-compiler-public', from: 'vitecompiler', to: 'v-public', kind: 'vol', label: '/app/public', flow: 'out' },
-    { id: 'm-compiler-resources', from: 'vitecompiler', to: 'b-resources', kind: 'vol', label: '/app/resources', flow: 'in' },
-    { id: 'm-compiler-nm', from: 'vitecompiler', to: 'v-nodemodules', kind: 'vol', label: '/app/node_modules', flow: 'in' },
-    { id: 'm-hmr-resources', from: 'vitehmr', to: 'b-resources', kind: 'vol', label: '/app/resources', flow: 'in' },
-    { id: 'm-hmr-nm', from: 'vitehmr', to: 'v-nodemodules', kind: 'vol', label: '/app/node_modules', flow: 'in' },
-    { id: 'm-web-src', from: 'nodeweb', to: 'b-src', kind: 'vol', label: '/app', flow: 'in' },
-    { id: 'm-web-public', from: 'nodeweb', to: 'v-public', kind: 'vol', label: '/app/public', flow: 'in', points: [[690, 600]] },
-    { id: 'm-web-nm', from: 'nodeweb', to: 'v-nodemodules', kind: 'vol', label: '/app/node_modules', flow: 'in' },
-    { id: 'm-cmd-src', from: 'nodecommand', to: 'b-src', kind: 'vol', label: '/app', flow: 'in' },
-    { id: 'm-cmd-nm', from: 'nodecommand', to: 'v-nodemodules', kind: 'vol', label: '/app/node_modules', flow: 'in' },
-    { id: 'm-worker-src', from: 'nodeworker', to: 'b-src', kind: 'vol', label: '/app', flow: 'in' },
-    { id: 'm-worker-nm', from: 'nodeworker', to: 'v-nodemodules', kind: 'vol', label: '/app/node_modules', flow: 'in' },
-    { id: 'm-pg-vol', from: 'postgres', to: 'v-postgres', kind: 'vol', label: '/var/lib/postgresql', flow: 'both' },
-    { id: 'm-pg-init', from: 'postgres', to: 'b-init', kind: 'vol', label: '/docker-entrypoint-initdb.d', flow: 'in' },
-    { id: 'm-rabbit-vol', from: 'rabbitmq', to: 'v-rabbitmq', kind: 'vol', label: '/var/lib/rabbitmq', flow: 'both' },
-    { id: 'm-es-vol', from: 'elasticsearch', to: 'v-elastic', kind: 'vol', label: '/usr/share/elasticsearch/data', flow: 'both' }
+    { id: 'm-nginx-public', from: 'nginx', to: 'v-public', kind: 'vol', flow: 'in', src: 'mb-nginx-public' },
+    { id: 'm-nginx-aulas', from: 'nginx', to: 'b-aulas', kind: 'vol', flow: 'in' , anchor: 'mb-nginx-aulas' },
+    { id: 'm-nginx-logs', from: 'nginx', to: 'b-logs', kind: 'vol', flow: 'out' , anchor: 'mb-nginx-logs' },
+    { id: 'm-compiler-public', from: 'vitecompiler', to: 'v-public', kind: 'vol', flow: 'out', src: 'mb-compiler-public' },
+    { id: 'm-compiler-resources', from: 'vitecompiler', to: 'b-resources', kind: 'vol', flow: 'in' , anchor: 'mb-compiler-resources' },
+    { id: 'm-compiler-nm', from: 'vitecompiler', to: 'v-nodemodules', kind: 'vol', flow: 'in', src: 'mb-compiler-nm' },
+    { id: 'm-hmr-resources', from: 'vitehmr', to: 'b-resources', kind: 'vol', flow: 'in' , anchor: 'mb-hmr-resources' },
+    { id: 'm-hmr-nm', from: 'vitehmr', to: 'v-nodemodules', kind: 'vol', flow: 'in', src: 'mb-hmr-nm' },
+    { id: 'm-web-src', from: 'nodeweb', to: 'b-src', kind: 'vol', flow: 'in' , anchor: 'mb-web-src' },
+    { id: 'm-web-public', from: 'nodeweb', to: 'v-public', kind: 'vol', flow: 'in', points: [[930, 925]], src: 'mb-web-public' },
+    { id: 'm-web-nm', from: 'nodeweb', to: 'v-nodemodules', kind: 'vol', flow: 'in', src: 'mb-web-nm' },
+    { id: 'm-cmd-src', from: 'nodecommand', to: 'b-src', kind: 'vol', flow: 'in' , anchor: 'mb-cmd-src' },
+    { id: 'm-cmd-nm', from: 'nodecommand', to: 'v-nodemodules', kind: 'vol', flow: 'in', src: 'mb-cmd-nm' },
+    { id: 'm-worker-src', from: 'nodeworker', to: 'b-src', kind: 'vol', flow: 'in' , anchor: 'mb-worker-src' },
+    { id: 'm-worker-nm', from: 'nodeworker', to: 'v-nodemodules', kind: 'vol', flow: 'in', src: 'mb-worker-nm' },
+    { id: 'm-pg-vol', from: 'postgres', to: 'v-postgres', kind: 'vol', flow: 'both', src: 'mb-pg-vol' },
+    { id: 'm-pg-init', from: 'postgres', to: 'b-init', kind: 'vol', flow: 'in' , anchor: 'mb-pg-init' },
+    { id: 'm-rabbit-vol', from: 'rabbitmq', to: 'v-rabbitmq', kind: 'vol', flow: 'both', src: 'mb-rabbit-vol' },
+    { id: 'm-es-vol', from: 'elasticsearch', to: 'v-elastic', kind: 'vol', flow: 'both', src: 'mb-es-vol' }
   ];
 
   /* ── detalhes de cada item (painel) ─────────────────────── */
@@ -98,8 +102,8 @@
 
   /* ── cenários ─────────────────────────────────────────── */
   var SCENARIOS = {
-    pagina: { t: 'HTTP estático', steps: [
-      { e: ['b-8080', '8080-nginx', 'm-nginx-public'] }
+    pagina: { t: 'HTTP estático (Vite pré-compiler)', steps: [
+      { e: ['m-compiler-resources', 'm-compiler-public', 'b-8080', '8080-nginx', 'm-nginx-public'] }
     ]},
     list: { t: 'HTTP API · list e get one (GET /users e GET /users/:id)', steps: [
       { e: ['b-8080', '8080-nginx', 'nginx-web', 'web-pg'], x: 'Uma API HTTP comum: GET /users (list) ou GET /users/:id (get one) entra pela 8080 do host (→ 80 do nginx). Não existe arquivo com esse caminho no public-volume, então o nginx faz proxy_pass para nodeweb_host:3000. No nodeweb, rota → controller → UserModel (findAndCountAll na lista, findByPk no get one), que consulta o Postgres em postgres_host:5432.' },
@@ -114,17 +118,14 @@
       { e: [], items: ['nodecommand', 'postgres'], x: 'O comando termina e o --rm apaga o container: o nodecommand só existiu durante a execução. O que fica é o resultado no Postgres, persistido no postgres-volume.' }
     ]},
     fila: { t: 'HTTP API · actions (POST / PUT / DELETE /users)', steps: [
-      { e: ['b-8080', '8080-nginx', 'nginx-web', 'web-pg', 'web-rabbit', 'rabbit-worker', 'worker-pg', 'worker-es'], x: 'Igual ao list e get one até o Postgres: a action (POST, PUT ou DELETE /users) entra pela 8080, o nginx passa para nodeweb_host:3000 e o controller grava no Postgres (postgres_host:5432). A diferença: o controller publica um job no RabbitMQ (rabbitmq_host:5672), o RabbitMQ entrega ao nodeworker (fila default), e o worker lê o usuário atual no Postgres e grava no Elasticsearch (elasticsearch_host:9200): PUT se existe, DELETE se não existe mais.' },
+      { e: ['b-8080', '8080-nginx', 'nginx-web', 'web-pg', 'web-rabbit', 'worker-rabbit', 'worker-pg', 'worker-es'], x: 'Igual ao list e get one até o Postgres: a action (POST, PUT ou DELETE /users) entra pela 8080, o nginx passa para nodeweb_host:3000 e o controller grava no Postgres (postgres_host:5432). A diferença: o controller publica um job no RabbitMQ (rabbitmq_host:5672), o RabbitMQ entrega ao nodeworker (fila default), e o worker lê o usuário atual no Postgres e grava no Elasticsearch (elasticsearch_host:9200): PUT se existe, DELETE se não existe mais.' },
       { e: ['nginx-web', '8080-nginx', 'b-8080'], x: 'O controller responde (201, 200 ou 204) logo depois de publicar o job: a resposta volta nodeweb → nginx → navegador sem esperar o worker nem o Elastic. Por isso a busca pode levar alguns milissegundos para enxergar a mudança.' }
     ]},
     busca: { t: 'HTTP API · search (POST /users/search)', steps: [
       { e: ['b-8080', '8080-nginx', 'nginx-web', 'web-pg', 'web-es'], x: 'Igual ao list e get one: POST /users/search entra pela 8080, o nginx passa para nodeweb_host:3000 e o nodeweb fala com o Postgres. A diferença: o nodeweb se conecta direto no Elasticsearch (elasticsearch_host:9200, só pela rede interna). Etapa 1: os filtros (LIKE %x% virando wildcard) rodam no Elastic, que devolve só os ids. Etapa 2: WHERE id IN (...) no Postgres pela chave primária.' },
       { e: ['nginx-web', '8080-nginx', 'b-8080'], x: 'O JSON com os usuários (na ordem do Elastic, dados atuais do Postgres, sem senha) volta nodeweb → nginx → navegador. Sem fila e sem worker: a busca só lê.' }
-    ]},
-    build: { t: 'Vite pré-compiler (build --watch)', steps: [
-      { e: ['m-compiler-resources', 'm-compiler-public'], x: 'Você salva um .ts em ./src/resources no seu PC. O vite-compiler lê em /app/resources (bind mount), compila (vite build --watch) e escreve o resultado em /app/public: o public-volume, um volume interno do Docker.' },
-      { e: ['m-nginx-public'], x: 'O mesmo public-volume é /var/www no nginx, que serve os arquivos compilados.' }
     ]}
+
 
   };
 
@@ -134,7 +135,7 @@
     rabbitmq: ['m-rabbit-vol'],
     elasticsearch: ['m-es-vol'],
     postgres: ['m-pg-vol'],
-    nodeweb: ['m-web-nm', 'm-web-public'],
+    nodeweb: ['m-web-nm'],
     nodeworker: ['m-worker-nm'],
     nodecommand: ['m-cmd-nm'],
     vitehmr: ['m-hmr-nm'],
@@ -143,7 +144,7 @@
 
   /* ── geometria ────────────────────────────────────────── */
   function box(id){
-    var el = items[id];
+    var el = items[id] || badges[id];
     var s = stage.getBoundingClientRect();
     var r = el.getBoundingClientRect();
     return { x: r.left - s.left, y: r.top - s.top, w: r.width, h: r.height, cx: r.left - s.left + r.width / 2, cy: r.top - s.top + r.height / 2 };
@@ -181,22 +182,23 @@
     svg.appendChild(defs);
 
     EDGES.forEach(function(edge){
-      /* a linha é desenhada no sentido do dado: leitura vai da montagem para o container */
-      var reverse = edge.flow === 'in';
-      var a = box(reverse ? edge.to : edge.from);
-      var b = box(reverse ? edge.from : edge.to);
+      /* a seta sai sempre de quem usa (o container, o navegador) e aponta para o que é usado.
+         Pasta do host montada (anchor): sai da pasta na borda e entra no container até o
+         badge "origem:destino" */
+      /* volume interno (src): a seta sai do badge "volume:destino" do container */
+      var a = box(edge.anchor ? edge.to : (edge.src || edge.from));
+      var b = box(edge.anchor ? edge.anchor : edge.to);
       var mids = (edge.points || []).map(function(p){ return [p[0] * k, p[1] * k]; });
       var first = mids.length ? mids[0] : [b.cx, b.cy];
       var last = mids.length ? mids[mids.length - 1] : [a.cx, a.cy];
       var gapEnd = 4;
-      var start = edgePoint(a, first[0], first[1], edge.flow === 'both' ? 4 : 2);
+      var start = edgePoint(a, first[0], first[1], 2);
       var end = edgePoint(b, last[0], last[1], gapEnd);
       var pts = [start].concat(mids, [end]);
       var d = 'M' + pts.map(function(p){ return p[0].toFixed(1) + ',' + p[1].toFixed(1); }).join(' L');
 
       var attrs = { d: d, class: 'wire ' + edge.kind + (edge.flow ? ' ' + edge.flow : '') + (edge.scenarioOnly ? ' only-scenario' : ''), 'data-id': edge.id };
       attrs['marker-end'] = 'url(#arrow)';
-      if(edge.flow === 'both'){ attrs['marker-start'] = 'url(#arrow)'; }
       var path = el('path', attrs);
       svg.appendChild(path);
       paths[edge.id] = path;
@@ -209,7 +211,7 @@
       var p = path.getPointAtLength(total * t);
       var anchor = 'start';
       var dx = 6;
-      var mountLeft = reverse ? start[0] < end[0] : end[0] < start[0];
+      var mountLeft = end[0] < start[0];
       if(edge.kind === 'vol' && mountLeft){
         anchor = 'end';
         dx = -6;
@@ -282,6 +284,7 @@
       if(labels[id].classList.contains('vol')){ labels[id].setAttribute('opacity', '0'); }
     });
     Object.keys(items).forEach(function(id){ items[id].classList.remove('lit'); });
+    Object.keys(badges).forEach(function(id){ badges[id].classList.remove('lit'); });
     stage.classList.remove('focus');
   }
 
@@ -290,6 +293,8 @@
     paths[id].classList.add(cls);
     items[e.from].classList.add('lit');
     items[e.to].classList.add('lit');
+    if(e.anchor){ badges[e.anchor].classList.add('lit'); }
+    if(e.src){ badges[e.src].classList.add('lit'); }
     if(!labels[id]){ return; }
     labels[id].classList.add('lit');
     labels[id].setAttribute('opacity', '1');
