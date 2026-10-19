@@ -29,6 +29,37 @@ const UserModel = sequelize.define(
         picture: {
             type: DataTypes.TEXT,
             allowNull: true
+        },
+
+        job_title: {
+            type: DataTypes.STRING(100),
+            allowNull: true
+        },
+
+        bio: {
+            type: DataTypes.TEXT,
+            allowNull: true
+        },
+
+        city: {
+            type: DataTypes.STRING(100),
+            allowNull: true
+        },
+
+        state: {
+            type: DataTypes.CHAR(2),
+            allowNull: true
+        },
+
+        birth_date: {
+            type: DataTypes.DATEONLY,
+            allowNull: true
+        },
+
+        is_active: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: true
         }
     },
     {

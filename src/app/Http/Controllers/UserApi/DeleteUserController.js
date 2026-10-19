@@ -1,4 +1,5 @@
 import UserModel from "../../../Models/UserModel.js";
+import SyncUserElasticJob from "../../../Jobs/SyncUserElasticJob.js";
 
 export default async function DeleteUserController(request, response) {
     try {
@@ -13,6 +14,9 @@ export default async function DeleteUserController(request, response) {
         }
 
         await user.destroy();
+
+        // O job não acha mais o usuário no Postgres e remove o documento do Elasticsearch
+        await SyncUserElasticJob.dispatch("default", { id: Number(id) });
 
         return response.status(204).send();
     } catch (error) {

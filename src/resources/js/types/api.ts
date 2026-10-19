@@ -9,6 +9,13 @@ export interface User {
   id: number;
   name: string;
   email: string;
+  // Campos de perfil (usados pela API de busca)
+  job_title: string | null;
+  bio: string | null;
+  city: string | null;
+  state: string | null;
+  birth_date: string | null; // "AAAA-MM-DD"
+  is_active: boolean;
 }
 
 export interface Task {

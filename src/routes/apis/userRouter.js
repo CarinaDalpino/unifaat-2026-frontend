@@ -7,6 +7,7 @@ import CreateUserController from '../../app/Http/Controllers/UserApi/CreateUserC
 import UpdateUserController from '../../app/Http/Controllers/UserApi/UpdateUserController.js';
 import DeleteUserController from '../../app/Http/Controllers/UserApi/DeleteUserController.js';
 import UploadImageController from '../../app/Http/Controllers/UserApi/UploadImageController.js';
+import SearchUserController from '../../app/Http/Controllers/UserApi/SearchUserController.js';
 import VerifyImageMiddleware from '../../app/Http/Middlewares/VerifyImageMiddleware.js';
 import AuthTokenMiddleware from '../../app/Http/Middlewares/AuthTokenMiddleware.js';
 
@@ -20,6 +21,9 @@ export default (() => {
     router.get('/:id', AuthTokenMiddleware, GetUserController);
 
     router.post('/', CreateUserController);
+
+    // Busca em duas etapas: Elasticsearch (ids) → Postgres (WHERE IN)
+    router.post('/search', SearchUserController);
 
     router.put('/:id', UpdateUserController);
 

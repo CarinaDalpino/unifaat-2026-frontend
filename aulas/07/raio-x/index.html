@@ -18,7 +18,7 @@
   <p class="meta">
     <span><i class="fa-solid fa-folder"></i> src/ · docker/ · docker-compose.yml</span>
     <span><i class="fa-solid fa-calendar-days"></i> 19/10/2026</span>
-    <span><i class="fa-solid fa-wrench"></i> 8 etapas até agora</span>
+    <span><i class="fa-solid fa-wrench"></i> 11 etapas até agora</span>
   </p>
 </header>
 
@@ -1431,6 +1431,784 @@ docker/<span class="new">node-worker/Dockerfile</span></div>
     <div class="ok">
       <strong><i class="fa-solid fa-circle-check"></i> Testado:</strong>
       <p>Stack completa com 8 containers. Worker: "Worker iniciado. Aguardando mensagens na fila: default". <code class="inline">docker compose run --rm nodecommand-container create-example-job</code> → worker loga "Enviando e-mail de boas-vindas para o usuário luan" e "Job executado: ExampleJob". Com o worker <strong>parado</strong>, 2 jobs disparados ficaram na fila e foram executados assim que ele voltou.</p>
+    </div>
+  </div>
+
+  <!-- ETAPA 9 -->
+  <div class="entry">
+    <div class="entry-dot">9</div>
+    <div class="entry-date">Etapa 9</div>
+    <h2>6 campos novos em <code class="inline">users</code>: a base da API de busca</h2>
+    <p class="sub">Para ter o que buscar no Elasticsearch, o usuário ganha campos de perfil, cada um com um tipo de filtro diferente: texto livre, filtro exato, intervalo de datas e booleano.</p>
+
+    <div class="tree">campo        Postgres                         na busca
+job_title    VARCHAR(100)                     <span class="comment">// texto (cargo)</span>
+bio          TEXT                             <span class="comment">// texto livre, com relevância</span>
+city         VARCHAR(100)                     <span class="comment">// filtro exato</span>
+state        CHAR(2)                          <span class="comment">// filtro exato (UF)</span>
+birth_date   DATE                             <span class="comment">// intervalo (range)</span>
+is_active    BOOLEAN NOT NULL DEFAULT TRUE    <span class="comment">// filtro booleano</span></div>
+
+    <h3 class="block-title">Migration nova: 003_add_profile_fields_to_users.js</h3>
+
+    <div class="diff">
+      <div class="diff-head">src/database/migrations/003_add_profile_fields_to_users.js</div>
+      <div class="line add">+ // Campos de perfil para a API de busca (Elasticsearch): texto livre (job_title, bio),</div>
+      <div class="line add">+ // filtros exatos (city, state), intervalo de datas (birth_date) e booleano (is_active)</div>
+      <div class="line add">+ export async function up(db) {</div>
+      <div class="line add">+   await db.query(`</div>
+      <div class="line add">+     ALTER TABLE users</div>
+      <div class="line add">+       ADD COLUMN job_title VARCHAR(100),</div>
+      <div class="line add">+       ADD COLUMN bio TEXT,</div>
+      <div class="line add">+       ADD COLUMN city VARCHAR(100),</div>
+      <div class="line add">+       ADD COLUMN state CHAR(2),</div>
+      <div class="line add">+       ADD COLUMN birth_date DATE,</div>
+      <div class="line add">+       ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT TRUE</div>
+      <div class="line add">+   `)</div>
+      <div class="line add">+ }</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ export async function down(db) {</div>
+      <div class="line add">+   await db.query(`</div>
+      <div class="line add">+     ALTER TABLE users</div>
+      <div class="line add">+       DROP COLUMN job_title,</div>
+      <div class="line add">+       DROP COLUMN bio,</div>
+      <div class="line add">+       DROP COLUMN city,</div>
+      <div class="line add">+       DROP COLUMN state,</div>
+      <div class="line add">+       DROP COLUMN birth_date,</div>
+      <div class="line add">+       DROP COLUMN is_active</div>
+      <div class="line add">+   `)</div>
+      <div class="line add">+ }</div>
+    </div>
+
+    <h3 class="block-title">Model</h3>
+
+    <div class="diff">
+      <div class="diff-head">src/app/Models/UserModel.js</div>
+      <div class="line ctx">          picture: {</div>
+      <div class="line ctx">              type: DataTypes.TEXT,</div>
+      <div class="line ctx">              allowNull: true</div>
+      <div class="line rem">-         }</div>
+      <div class="line add">+         },</div>
+      <div class="line add">+ </div>
+      <div class="line add">+         job_title: {</div>
+      <div class="line add">+             type: DataTypes.STRING(100),</div>
+      <div class="line add">+             allowNull: true</div>
+      <div class="line add">+         },</div>
+      <div class="line add">+ </div>
+      <div class="line add">+         bio: {</div>
+      <div class="line add">+             type: DataTypes.TEXT,</div>
+      <div class="line add">+             allowNull: true</div>
+      <div class="line add">+         },</div>
+      <div class="line add">+ </div>
+      <div class="line add">+         city: {</div>
+      <div class="line add">+             type: DataTypes.STRING(100),</div>
+      <div class="line add">+             allowNull: true</div>
+      <div class="line add">+         },</div>
+      <div class="line add">+ </div>
+      <div class="line add">+         state: {</div>
+      <div class="line add">+             type: DataTypes.CHAR(2),</div>
+      <div class="line add">+             allowNull: true</div>
+      <div class="line add">+         },</div>
+      <div class="line add">+ </div>
+      <div class="line add">+         birth_date: {</div>
+      <div class="line add">+             type: DataTypes.DATEONLY,</div>
+      <div class="line add">+             allowNull: true</div>
+      <div class="line add">+         },</div>
+      <div class="line add">+ </div>
+      <div class="line add">+         is_active: {</div>
+      <div class="line add">+             type: DataTypes.BOOLEAN,</div>
+      <div class="line add">+             allowNull: false,</div>
+      <div class="line add">+             defaultValue: true</div>
+      <div class="line add">+         }</div>
+      <div class="line ctx">      },</div>
+    </div>
+
+    <h3 class="block-title">Seed: os 40 usuários ganham perfil</h3>
+
+    <div class="diff">
+      <div class="diff-head">src/database/seeds/initialSeed.js (depois da lista de usuários, que não mudou)</div>
+      <div class="line rem">- export default async function seed(postgres) {</div>
+      <div class="line rem">-     for (const user of users) {</div>
+      <div class="line rem">-         const hashedPassword = await bcrypt.hash(user.password, 10)</div>
+      <div class="line rem">- </div>
+      <div class="line rem">-         await postgres.query(</div>
+      <div class="line rem">-             `INSERT INTO users (name, email, password, created_at, updated_at)</div>
+      <div class="line rem">-              VALUES ($1, $2, $3, NOW(), NOW())</div>
+      <div class="line rem">-              ON CONFLICT (email) DO NOTHING`,</div>
+      <div class="line rem">-             [user.name, user.email, hashedPassword]</div>
+      <div class="line rem">-         )</div>
+      <div class="line rem">-     }</div>
+      <div class="line rem">- }</div>
+      <div class="line ctx"></div>
+      <div class="line add">+ const cities = [</div>
+      <div class="line add">+     ['Atibaia', 'SP'], ['São Paulo', 'SP'], ['Campinas', 'SP'], ['Bragança Paulista', 'SP'],</div>
+      <div class="line add">+     ['Belo Horizonte', 'MG'], ['Rio de Janeiro', 'RJ'], ['Curitiba', 'PR'], ['Florianópolis', 'SC'],</div>
+      <div class="line add">+     ['Porto Alegre', 'RS'], ['Recife', 'PE']</div>
+      <div class="line add">+ ]</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ const jobs = [</div>
+      <div class="line add">+     'Dev Frontend', 'Dev Backend', 'Analista de Dados', 'Designer UX',</div>
+      <div class="line add">+     'DevOps', 'Analista de Suporte', 'Gerente de Projetos', 'Dev Mobile'</div>
+      <div class="line add">+ ]</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ const interests = [</div>
+      <div class="line add">+     'React e TypeScript', 'APIs REST com Node.js', 'bancos de dados PostgreSQL', 'Docker e containers',</div>
+      <div class="line add">+     'acessibilidade na web', 'testes automatizados', 'Elasticsearch e busca', 'filas com RabbitMQ'</div>
+      <div class="line add">+ ]</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ function profile(index) {</div>
+      <div class="line add">+     const [city, state] = cities[index % cities.length]</div>
+      <div class="line add">+     const job = jobs[index % jobs.length]</div>
+      <div class="line add">+     const interest = interests[(index * 3) % interests.length]</div>
+      <div class="line add">+     const otherInterest = interests[(index * 5 + 1) % interests.length]</div>
+      <div class="line add">+ </div>
+      <div class="line add">+     const year = 1975 + ((index * 7) % 30)</div>
+      <div class="line add">+     const month = String((index % 12) + 1).padStart(2, '0')</div>
+      <div class="line add">+     const day = String(((index * 3) % 28) + 1).padStart(2, '0')</div>
+      <div class="line add">+ </div>
+      <div class="line add">+     return {</div>
+      <div class="line add">+         job_title: job,</div>
+      <div class="line add">+         bio: `${job} em ${city}. Trabalha com ${interest} e estuda ${otherInterest}.`,</div>
+      <div class="line add">+         city: city,</div>
+      <div class="line add">+         state: state,</div>
+      <div class="line add">+         birth_date: `${year}-${month}-${day}`,</div>
+      <div class="line add">+         // 1 a cada 7 usuários fica inativo, para ter o que filtrar</div>
+      <div class="line add">+         is_active: index % 7 !== 6</div>
+      <div class="line add">+     }</div>
+      <div class="line add">+ }</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ export default async function seed(postgres) {</div>
+      <div class="line add">+     for (const [index, user] of users.entries()) {</div>
+      <div class="line add">+         const hashedPassword = await bcrypt.hash(user.password, 10)</div>
+      <div class="line add">+         const data = profile(index)</div>
+      <div class="line add">+ </div>
+      <div class="line add">+         // Usuário novo: insere tudo. Usuário que já existia: só completa o perfil (senha intacta)</div>
+      <div class="line add">+         await postgres.query(</div>
+      <div class="line add">+             `INSERT INTO users (name, email, password, job_title, bio, city, state, birth_date, is_active, created_at, updated_at)</div>
+      <div class="line add">+              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())</div>
+      <div class="line add">+              ON CONFLICT (email) DO UPDATE SET</div>
+      <div class="line add">+                 job_title = EXCLUDED.job_title,</div>
+      <div class="line add">+                 bio = EXCLUDED.bio,</div>
+      <div class="line add">+                 city = EXCLUDED.city,</div>
+      <div class="line add">+                 state = EXCLUDED.state,</div>
+      <div class="line add">+                 birth_date = EXCLUDED.birth_date,</div>
+      <div class="line add">+                 is_active = EXCLUDED.is_active,</div>
+      <div class="line add">+                 updated_at = NOW()`,</div>
+      <div class="line add">+             [user.name, user.email, hashedPassword, data.job_title, data.bio, data.city, data.state, data.birth_date, data.is_active]</div>
+      <div class="line add">+         )</div>
+      <div class="line add">+     }</div>
+      <div class="line add">+ }</div>
+    </div>
+
+    <h3 class="block-title">Controllers: criar e atualizar com os campos novos</h3>
+
+    <div class="diff">
+      <div class="diff-head">src/app/Http/Controllers/UserApi/CreateUserController.js</div>
+      <div class="line rem">-         const { name, email, password } = request.body;</div>
+      <div class="line add">+         const { name, email, password, job_title, bio, city, state, birth_date, is_active } = request.body;</div>
+      <div class="line ctx">          ...</div>
+      <div class="line ctx">          if (!password) {</div>
+      <div class="line ctx">              error.push("password obrigatório!");</div>
+      <div class="line ctx">          }</div>
+      <div class="line add">+ </div>
+      <div class="line add">+         if (state &amp;&amp; state.length !== 2) {</div>
+      <div class="line add">+             error.push("state deve ser a sigla da UF, com 2 letras!");</div>
+      <div class="line add">+         }</div>
+      <div class="line ctx">          ...</div>
+      <div class="line ctx">              email: email,</div>
+      <div class="line rem">-             password: hashedPassword</div>
+      <div class="line add">+             password: hashedPassword,</div>
+      <div class="line add">+             // Campos de perfil (opcionais): usados pela API de busca</div>
+      <div class="line add">+             job_title: job_title,</div>
+      <div class="line add">+             bio: bio,</div>
+      <div class="line add">+             city: city,</div>
+      <div class="line add">+             state: state,</div>
+      <div class="line add">+             birth_date: birth_date,</div>
+      <div class="line add">+             is_active: is_active</div>
+      <div class="line ctx">          });</div>
+    </div>
+
+    <div class="diff">
+      <div class="diff-head">src/app/Http/Controllers/UserApi/UpdateUserController.js</div>
+      <div class="line ctx">          if (!name || !email) {</div>
+      <div class="line ctx">              ...</div>
+      <div class="line ctx">          }</div>
+      <div class="line add">+ </div>
+      <div class="line add">+         if (request.body.state &amp;&amp; request.body.state.length !== 2) {</div>
+      <div class="line add">+             return response.status(400).json({</div>
+      <div class="line add">+                 error: "State must be the 2-letter UF"</div>
+      <div class="line add">+             });</div>
+      <div class="line add">+         }</div>
+      <div class="line ctx">          ...</div>
+      <div class="line ctx">          user.name = name;</div>
+      <div class="line ctx">          user.email = email;</div>
+      <div class="line add">+ </div>
+      <div class="line add">+         // Campos de perfil: só altera o que veio no body</div>
+      <div class="line add">+         const profileFields = ["job_title", "bio", "city", "state", "birth_date", "is_active"];</div>
+      <div class="line add">+ </div>
+      <div class="line add">+         for (const field of profileFields) {</div>
+      <div class="line add">+             if (request.body[field] === undefined) {</div>
+      <div class="line add">+                 continue;</div>
+      <div class="line add">+             }</div>
+      <div class="line add">+ </div>
+      <div class="line add">+             user[field] = request.body[field];</div>
+      <div class="line add">+         }</div>
+    </div>
+
+    <h3 class="block-title">Documentação e frontend acompanham o model</h3>
+
+    <div class="diff">
+      <div class="diff-head">src/resources/js/types/api.ts</div>
+      <div class="line ctx">  export interface User {</div>
+      <div class="line ctx">    id: number;</div>
+      <div class="line ctx">    name: string;</div>
+      <div class="line ctx">    email: string;</div>
+      <div class="line add">+   // Campos de perfil (usados pela API de busca)</div>
+      <div class="line add">+   job_title: string | null;</div>
+      <div class="line add">+   bio: string | null;</div>
+      <div class="line add">+   city: string | null;</div>
+      <div class="line add">+   state: string | null;</div>
+      <div class="line add">+   birth_date: string | null; // "AAAA-MM-DD"</div>
+      <div class="line add">+   is_active: boolean;</div>
+      <div class="line ctx">  }</div>
+    </div>
+
+    <div class="diff">
+      <div class="diff-head">src/docs/02_User.json (schema User, body do POST /users e do PUT /users/{id})</div>
+      <div class="line add">+ "job_title":  { "type": "string", "nullable": true, "example": "Dev Frontend" },</div>
+      <div class="line add">+ "bio":        { "type": "string", "nullable": true, "example": "Dev Frontend em Atibaia. Trabalha com React e TypeScript." },</div>
+      <div class="line add">+ "city":       { "type": "string", "nullable": true, "example": "Atibaia" },</div>
+      <div class="line add">+ "state":      { "type": "string", "nullable": true, "minLength": 2, "maxLength": 2, "example": "SP" },</div>
+      <div class="line add">+ "birth_date": { "type": "string", "format": "date", "nullable": true, "example": "1998-04-12" },</div>
+      <div class="line add">+ "is_active":  { "type": "boolean", "example": true }</div>
+    </div>
+
+    <div class="why">
+      <div class="why-card">
+        <h4>Por que uma migration nova</h4>
+        <p>A <code class="inline">001</code> já rodou no banco de todo mundo. Migration é histórico: mudança de schema entra como migration nova, com <code class="inline">ALTER TABLE</code>. O <code class="inline">down()</code> desfaz com <code class="inline">DROP COLUMN</code>. Os campos novos aceitam <code class="inline">NULL</code> (menos <code class="inline">is_active</code>, que tem padrão), então quem já existe continua válido.</p>
+      </div>
+      <div class="why-card">
+        <h4>O seed com DO UPDATE</h4>
+        <p>Antes era <code class="inline">ON CONFLICT (email) DO NOTHING</code>. Agora é <code class="inline">DO UPDATE</code> só nos campos de perfil: quem já tem os 40 usuários roda o seed de novo e o perfil é preenchido, com a <strong>senha intacta</strong>. Os dados vêm do índice do usuário (10 cidades em 7 UFs, 8 cargos, bios que misturam 8 interesses, 1 a cada 7 inativo).</p>
+      </div>
+      <div class="why-card">
+        <h4>Atualizar só o que veio</h4>
+        <p>No update, o laço em <code class="inline">profileFields</code> pula (<code class="inline">continue</code>) o campo que não veio no body. Mandar só <code class="inline">{ is_active: false }</code> não apaga cidade nem cargo. Sem <code class="inline">else</code>.</p>
+      </div>
+    </div>
+
+    <div class="callout">
+      <span class="icon"><i class="fa-solid fa-terminal"></i></span>
+      <div>
+        <strong>Para atualizar o seu banco:</strong>
+        <p><code class="inline">docker compose run --rm nodecommand-container migrate</code> e depois <code class="inline">docker compose run --rm nodecommand-container seed</code>.</p>
+      </div>
+    </div>
+
+    <div class="callout">
+      <span class="icon"><i class="fa-solid fa-bug"></i></span>
+      <div>
+        <strong>Bug antigo no Swagger (não corrigido):</strong>
+        <p>o <code class="inline">SwaggerDoc.js</code> junta só os <code class="inline">paths</code> dos arquivos de <code class="inline">docs/</code>, não os <code class="inline">components.schemas</code>. Os campos novos aparecem no body do POST e do PUT, mas o schema <code class="inline">User</code> das respostas não chega ao Swagger montado.</p>
+      </div>
+    </div>
+
+    <div class="ok">
+      <strong><i class="fa-solid fa-circle-check"></i> Testado:</strong>
+      <p><code class="inline">migrate</code> executa a 003 e as 6 colunas aparecem em <code class="inline">users</code>; <code class="inline">seed</code> preenche os 40 usuários e, rodado de novo, não duplica nem troca senha. Pela API: <code class="inline">POST /users</code> com perfil → 201; <code class="inline">PUT</code> só com <code class="inline">is_active</code> e <code class="inline">city</code> → só esses mudam; <code class="inline">state</code> com 3 letras → 400. <code class="inline">migrate:rollback</code> remove as colunas. <code class="inline">tsc</code> ok.</p>
+    </div>
+  </div>
+
+  <!-- ETAPA 10 -->
+  <div class="entry">
+    <div class="entry-dot">10</div>
+    <div class="entry-date">Etapa 10</div>
+    <h2>Service do Elasticsearch para <code class="inline">users</code> + job em toda action</h2>
+    <p class="sub">Toda criação, edição ou exclusão de usuário dispara um job. O controller não espera o Elastic: grava no Postgres, publica na fila e responde. O worker faz o resto.</p>
+
+    <div class="tree">POST / PUT / DELETE /users
+    ↓
+controller grava no Postgres (fonte da verdade)
+    ↓
+SyncUserElasticJob.dispatch("default", { id })   <span class="comment">// só o id vai na fila</span>
+    ↓
+controller responde (201 / 200 / 204)            <span class="comment">// não esperou o Elastic</span>
+
+... no container do worker ...
+
+SyncUserElasticJob → UserElasticService.sync(id)
+    ↓
+existe no Postgres?  sim → PUT    /users/_doc/{id}   <span class="comment">// "created" / "updated"</span>
+                     não → DELETE /users/_doc/{id}   <span class="comment">// "deleted"</span></div>
+
+    <div class="tree">src/
+├── database/connections/<span class="new">elastic.js</span>        <span class="comment">// NOVO: cliente HTTP do Elastic</span>
+└── app/
+    ├── <span class="new">Services/UserElasticService.js</span>    <span class="comment">// NOVO: pasta e arquivo</span>
+    ├── Jobs/<span class="new">SyncUserElasticJob.js</span>          <span class="comment">// NOVO</span>
+    └── Http/Controllers/UserApi/
+        ├── CreateUserController.js     <span class="comment">// + dispatch</span>
+        ├── UpdateUserController.js     <span class="comment">// + dispatch</span>
+        └── DeleteUserController.js     <span class="comment">// + dispatch</span></div>
+
+    <h3 class="block-title">A conexão: só um cliente HTTP</h3>
+
+    <div class="diff">
+      <div class="diff-head">src/database/connections/elastic.js</div>
+      <div class="line add">+ import { configDotenv } from 'dotenv';</div>
+      <div class="line add">+ import axios from 'axios';</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ /**</div>
+      <div class="line add">+  * Conexão com o Elasticsearch: é só um cliente HTTP (a API do Elastic é REST + JSON).</div>
+      <div class="line add">+  * O host/porta vêm do docker-compose (elasticsearch_host:9200, só na rede interna).</div>
+      <div class="line add">+  */</div>
+      <div class="line add">+ export default (() =&gt; {</div>
+      <div class="line add">+     configDotenv({</div>
+      <div class="line add">+         quiet: true</div>
+      <div class="line add">+     });</div>
+      <div class="line add">+ </div>
+      <div class="line add">+     const host = process.env.ELASTIC_HOST || 'elasticsearch_host';</div>
+      <div class="line add">+     const port = process.env.ELASTIC_PORT || '9200';</div>
+      <div class="line add">+ </div>
+      <div class="line add">+     return axios.create({</div>
+      <div class="line add">+         baseURL: `http://${host}:${port}`,</div>
+      <div class="line add">+         headers: { 'Content-Type': 'application/json' }</div>
+      <div class="line add">+     });</div>
+      <div class="line add">+ })();</div>
+    </div>
+
+    <h3 class="block-title">O service: quem sabe falar com o Elastic</h3>
+
+    <div class="diff">
+      <div class="diff-head">src/app/Services/UserElasticService.js</div>
+      <div class="line add">+ import elastic from '../../database/connections/elastic.js';</div>
+      <div class="line add">+ import UserModel from '../Models/UserModel.js';</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ /**</div>
+      <div class="line add">+  * Gerencia a cópia dos usuários no Elasticsearch (índice "users").</div>
+      <div class="line add">+  * O Postgres é a fonte da verdade: o Elastic só guarda o que a busca precisa.</div>
+      <div class="line add">+  */</div>
+      <div class="line add">+ const INDEX = 'users';</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ /** Monta o documento do Elastic a partir do usuário do Postgres (sem senha) */</div>
+      <div class="line add">+ function toDocument(user) {</div>
+      <div class="line add">+     return {</div>
+      <div class="line add">+         name: user.name,</div>
+      <div class="line add">+         email: user.email,</div>
+      <div class="line add">+         job_title: user.job_title,</div>
+      <div class="line add">+         bio: user.bio,</div>
+      <div class="line add">+         city: user.city,</div>
+      <div class="line add">+         state: user.state,</div>
+      <div class="line add">+         birth_date: user.birth_date,</div>
+      <div class="line add">+         is_active: user.is_active,</div>
+      <div class="line add">+         created_at: user.created_at</div>
+      <div class="line add">+     };</div>
+      <div class="line add">+ }</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ /** Cria ou substitui o documento: PUT /users/_doc/{id} (upsert) */</div>
+      <div class="line add">+ async function upsert(user) {</div>
+      <div class="line add">+     const { data } = await elastic.put(`/${INDEX}/_doc/${user.id}`, toDocument(user));</div>
+      <div class="line add">+ </div>
+      <div class="line add">+     return data.result; // "created" ou "updated"</div>
+      <div class="line add">+ }</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ /** Remove o documento; 404 não é erro (o objetivo era ele não existir) */</div>
+      <div class="line add">+ async function remove(id) {</div>
+      <div class="line add">+     const { data } = await elastic.delete(`/${INDEX}/_doc/${id}`, {</div>
+      <div class="line add">+         validateStatus: (status) =&gt; status === 200 || status === 404</div>
+      <div class="line add">+     });</div>
+      <div class="line add">+ </div>
+      <div class="line add">+     return data.result; // "deleted" ou "not_found"</div>
+      <div class="line add">+ }</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ /**</div>
+      <div class="line add">+  * Sincroniza um usuário pelo id: lê o estado ATUAL no Postgres e espelha no Elastic.</div>
+      <div class="line add">+  * Existe → upsert. Não existe mais → remove. Serve para criar, atualizar e excluir.</div>
+      <div class="line add">+  */</div>
+      <div class="line add">+ async function sync(id) {</div>
+      <div class="line add">+     const user = await UserModel.findByPk(id);</div>
+      <div class="line add">+ </div>
+      <div class="line add">+     if (!user) {</div>
+      <div class="line add">+         return remove(id);</div>
+      <div class="line add">+     }</div>
+      <div class="line add">+ </div>
+      <div class="line add">+     return upsert(user);</div>
+      <div class="line add">+ }</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ export default {</div>
+      <div class="line add">+     INDEX,</div>
+      <div class="line add">+     toDocument,</div>
+      <div class="line add">+     upsert,</div>
+      <div class="line add">+     remove,</div>
+      <div class="line add">+     sync</div>
+      <div class="line add">+ };</div>
+    </div>
+
+    <h3 class="block-title">O job: recebe o id e chama o service</h3>
+
+    <div class="diff">
+      <div class="diff-head">src/app/Jobs/SyncUserElasticJob.js</div>
+      <div class="line add">+ import { createJob } from '../../utils/job.js'</div>
+      <div class="line add">+ import UserElasticService from '../Services/UserElasticService.js'</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ /**</div>
+      <div class="line add">+  * Disparado pelos controllers de usuário (create, update, delete).</div>
+      <div class="line add">+  * Recebe só o id: o service busca o estado atual no Postgres e espelha no Elastic.</div>
+      <div class="line add">+  */</div>
+      <div class="line add">+ export default createJob({</div>
+      <div class="line add">+     name: 'SyncUserElasticJob',</div>
+      <div class="line add">+     handle: async (payload) =&gt; {</div>
+      <div class="line add">+         const { id } = payload</div>
+      <div class="line add">+ </div>
+      <div class="line add">+         const result = await UserElasticService.sync(id)</div>
+      <div class="line add">+ </div>
+      <div class="line add">+         console.log(`Usuário ${id} sincronizado no Elasticsearch: ${result}`)</div>
+      <div class="line add">+     }</div>
+      <div class="line add">+ })</div>
+    </div>
+
+    <h3 class="block-title">Os controllers disparam o job</h3>
+
+    <div class="diff">
+      <div class="diff-head">src/app/Http/Controllers/UserApi/CreateUserController.js</div>
+      <div class="line ctx">  import UserModel from "../../../Models/UserModel.js";</div>
+      <div class="line ctx">  import bcrypt from "bcrypt";</div>
+      <div class="line add">+ import SyncUserElasticJob from "../../../Jobs/SyncUserElasticJob.js";</div>
+      <div class="line ctx">  ...</div>
+      <div class="line add">+         // Fora do ciclo HTTP: o worker indexa no Elasticsearch depois</div>
+      <div class="line add">+         await SyncUserElasticJob.dispatch("default", { id: user.id });</div>
+      <div class="line add">+ </div>
+      <div class="line ctx">          return response.status(201).json(user);</div>
+    </div>
+
+    <div class="diff">
+      <div class="diff-head">src/app/Http/Controllers/UserApi/UpdateUserController.js</div>
+      <div class="line ctx">  import bcrypt from "bcrypt";</div>
+      <div class="line add">+ import SyncUserElasticJob from "../../../Jobs/SyncUserElasticJob.js";</div>
+      <div class="line ctx">  ...</div>
+      <div class="line ctx">          await user.save();</div>
+      <div class="line ctx"></div>
+      <div class="line add">+         // Fora do ciclo HTTP: o worker atualiza o documento no Elasticsearch depois</div>
+      <div class="line add">+         await SyncUserElasticJob.dispatch("default", { id: user.id });</div>
+      <div class="line add">+ </div>
+      <div class="line ctx">          return response.json(user);</div>
+    </div>
+
+    <div class="diff">
+      <div class="diff-head">src/app/Http/Controllers/UserApi/DeleteUserController.js</div>
+      <div class="line ctx">  import UserModel from "../../../Models/UserModel.js";</div>
+      <div class="line add">+ import SyncUserElasticJob from "../../../Jobs/SyncUserElasticJob.js";</div>
+      <div class="line ctx">  ...</div>
+      <div class="line ctx">          await user.destroy();</div>
+      <div class="line add">+ </div>
+      <div class="line add">+         // O job não acha mais o usuário no Postgres e remove o documento do Elasticsearch</div>
+      <div class="line add">+         await SyncUserElasticJob.dispatch("default", { id: Number(id) });</div>
+      <div class="line add">+ </div>
+      <div class="line ctx">          return response.status(204).send();</div>
+    </div>
+
+    <div class="why">
+      <div class="why-card">
+        <h4>Um job para as três actions</h4>
+        <p>O payload leva <strong>só o id</strong>. O service lê o estado <strong>atual</strong> no Postgres: se o usuário existe, faz upsert; se não existe mais, remove. Criar, editar e excluir viram a mesma operação: sincronizar. Se dois jobs do mesmo usuário rodarem fora de ordem, o Elastic termina igual ao Postgres.</p>
+      </div>
+      <div class="why-card">
+        <h4>Job x service</h4>
+        <p>O job só orquestra: recebe o id, chama o service e loga. Quem sabe o índice, o formato do documento, o upsert e o delete é o <code class="inline">UserElasticService</code>, que vai ser reaproveitado pela carga inicial (<code class="inline">_bulk</code>) e pela API de busca.</p>
+      </div>
+      <div class="why-card">
+        <h4>O que vai para o índice</h4>
+        <p><code class="inline">toDocument()</code> escolhe os campos de busca da etapa 9 mais <code class="inline">name</code>, <code class="inline">email</code> e <code class="inline">created_at</code>. A <strong>senha nunca vai para o Elastic</strong>, e a <code class="inline">picture</code> não entra porque não é campo de busca.</p>
+      </div>
+      <div class="why-card">
+        <h4>Por que axios</h4>
+        <p>A API do Elastic é REST com JSON: a conexão é só um <code class="inline">axios.create()</code> apontando para <code class="inline">http://elasticsearch_host:9200</code>, no mesmo padrão de IIFE do <code class="inline">postgres.js</code> e do <code class="inline">rabbit.js</code>. O worker e o web já recebem <code class="inline">ELASTIC_HOST</code>/<code class="inline">ELASTIC_PORT</code> (etapas 3 e 8).</p>
+      </div>
+    </div>
+
+    <div class="callout">
+      <span class="icon"><i class="fa-solid fa-list-check"></i></span>
+      <div>
+        <strong>O que ainda falta:</strong>
+        <p>criar o índice <code class="inline">users</code> com <strong>mapping</strong> (sem ele, o Elastic adivinha os tipos no primeiro <code class="inline">PUT</code>: <code class="inline">state</code> e <code class="inline">city</code> precisam ser <code class="inline">keyword</code> para filtro exato, <code class="inline">birth_date</code> <code class="inline">date</code>, e <code class="inline">bio</code> com analisador de português) e a <strong>carga inicial</strong> com <code class="inline">_bulk</code>, porque os usuários que já existem só entram no Elastic quando forem alterados.</p>
+      </div>
+    </div>
+
+    <div class="ok">
+      <strong><i class="fa-solid fa-circle-check"></i> Verificado:</strong>
+      <p><code class="inline">node --check</code> nos 6 arquivos: sintaxe ok. Ainda não executado de ponta a ponta.</p>
+    </div>
+  </div>
+
+  <!-- ETAPA 11 -->
+  <div class="entry">
+    <div class="entry-dot">11</div>
+    <div class="entry-date">Etapa 11</div>
+    <h2>API de busca: <code class="inline">POST /users/search</code></h2>
+    <p class="sub">A busca em duas etapas da aula, no código: o Elasticsearch resolve os filtros (texto como <code class="inline">LIKE '%valor%'</code>) e devolve só os ids; o Postgres traz os usuários pela chave primária com <code class="inline">WHERE id IN</code>.</p>
+
+    <div class="tree">POST /users/search
+{ "filters": { "job_title": "dev", "state": "SP", "is_active": true }, "page": 1, "limit": 10 }
+    ↓
+<span class="new">1) Elasticsearch</span>  POST /users/_search   <span class="comment">// _source: false → só os ids</span>
+       wildcard  job_title.keyword  *dev*   <span class="comment">// LIKE '%dev%', sem diferenciar maiúscula</span>
+       wildcard  state.keyword      *SP*
+       term      is_active          true
+    ← ids (exemplo): 40, 33, 25, 17 ...      <span class="comment">// já paginados e ordenados</span>
+    ↓
+<span class="new">2) Postgres</span>       SELECT ... FROM users WHERE id IN (40, 33, 25, 17 ...)
+    ← usuários atuais (sem senha), reordenados pelos ids do Elastic</div>
+
+    <div class="tree">campo de filters                                   como é buscado
+name · email · job_title · bio · city · state     <span class="comment">// contém: wildcard *valor* em campo.keyword</span>
+is_active                                          <span class="comment">// exato: term</span>
+birth_date · created_at                            <span class="comment">// intervalo: range { gte, lte }</span>
+qualquer outro                                     <span class="comment">// 400: campo de busca inválido</span></div>
+
+    <h3 class="block-title">Service: monta a query e busca os ids</h3>
+
+    <div class="diff">
+      <div class="diff-head">src/app/Services/UserElasticService.js (acrescentado antes do export default)</div>
+      <div class="line add">+ /** Campos de texto: buscados como "contém" (LIKE '%valor%') */</div>
+      <div class="line add">+ const TEXT_FIELDS = ['name', 'email', 'job_title', 'bio', 'city', 'state'];</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ /** Campos de data: buscados por intervalo { gte, lte } */</div>
+      <div class="line add">+ const DATE_FIELDS = ['birth_date', 'created_at'];</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ /** Campos booleanos: buscados pelo valor exato */</div>
+      <div class="line add">+ const BOOLEAN_FIELDS = ['is_active'];</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ /** * e ? são curingas do wildcard: o que o usuário digitou é escapado para virar texto */</div>
+      <div class="line add">+ function escapeWildcard(value) {</div>
+      <div class="line add">+     return String(value).replace(/[\\*?]/g, (char) =&gt; `\\${char}`);</div>
+      <div class="line add">+ }</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ /**</div>
+      <div class="line add">+  * Monta a query do Elastic a partir dos filtros do body.</div>
+      <div class="line add">+  * Todos os filtros valem juntos (AND), dentro de um bool.filter.</div>
+      <div class="line add">+  * Lança erro se vier um campo que não existe no índice.</div>
+      <div class="line add">+  */</div>
+      <div class="line add">+ function buildQuery(filters) {</div>
+      <div class="line add">+     const filter = [];</div>
+      <div class="line add">+ </div>
+      <div class="line add">+     for (const [field, value] of Object.entries(filters)) {</div>
+      <div class="line add">+         if (value === undefined || value === null || value === '') {</div>
+      <div class="line add">+             continue;</div>
+      <div class="line add">+         }</div>
+      <div class="line add">+ </div>
+      <div class="line add">+         if (TEXT_FIELDS.includes(field)) {</div>
+      <div class="line add">+             // LIKE '%valor%': *valor* no subcampo .keyword (texto inteiro), sem diferenciar maiúscula</div>
+      <div class="line add">+             filter.push({</div>
+      <div class="line add">+                 wildcard: {</div>
+      <div class="line add">+                     [`${field}.keyword`]: {</div>
+      <div class="line add">+                         value: `*${escapeWildcard(value)}*`,</div>
+      <div class="line add">+                         case_insensitive: true</div>
+      <div class="line add">+                     }</div>
+      <div class="line add">+                 }</div>
+      <div class="line add">+             });</div>
+      <div class="line add">+             continue;</div>
+      <div class="line add">+         }</div>
+      <div class="line add">+ </div>
+      <div class="line add">+         if (BOOLEAN_FIELDS.includes(field)) {</div>
+      <div class="line add">+             filter.push({ term: { [field]: value === true || value === 'true' } });</div>
+      <div class="line add">+             continue;</div>
+      <div class="line add">+         }</div>
+      <div class="line add">+ </div>
+      <div class="line add">+         if (DATE_FIELDS.includes(field)) {</div>
+      <div class="line add">+             // { "gte": "1990-01-01", "lte": "1999-12-31" }: só as pontas que vierem</div>
+      <div class="line add">+             filter.push({ range: { [field]: { gte: value.gte, lte: value.lte } } });</div>
+      <div class="line add">+             continue;</div>
+      <div class="line add">+         }</div>
+      <div class="line add">+ </div>
+      <div class="line add">+         throw new Error(`Campo de busca inválido: ${field}`);</div>
+      <div class="line add">+     }</div>
+      <div class="line add">+ </div>
+      <div class="line add">+     return { bool: { filter: filter } };</div>
+      <div class="line add">+ }</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ /**</div>
+      <div class="line add">+  * Etapa 1 da busca: o Elastic resolve os filtros e devolve SÓ os ids (_source: false).</div>
+      <div class="line add">+  * Os dados completos vêm depois do Postgres, pelo WHERE IN (fonte da verdade).</div>
+      <div class="line add">+  */</div>
+      <div class="line add">+ async function searchIds(filters, { page, limit }) {</div>
+      <div class="line add">+     const { data } = await elastic.post(`/${INDEX}/_search`, {</div>
+      <div class="line add">+         _source: false,</div>
+      <div class="line add">+         from: (page - 1) * limit,</div>
+      <div class="line add">+         size: limit,</div>
+      <div class="line add">+         track_total_hits: true,</div>
+      <div class="line add">+         sort: [{ created_at: 'desc' }],</div>
+      <div class="line add">+         query: buildQuery(filters)</div>
+      <div class="line add">+     });</div>
+      <div class="line add">+ </div>
+      <div class="line add">+     return {</div>
+      <div class="line add">+         total: data.hits.total.value,</div>
+      <div class="line add">+         ids: data.hits.hits.map((hit) =&gt; Number(hit._id))</div>
+      <div class="line add">+     };</div>
+      <div class="line add">+ }</div>
+    </div>
+
+    <div class="diff">
+      <div class="diff-head">src/app/Services/UserElasticService.js (export default)</div>
+      <div class="line ctx">  export default {</div>
+      <div class="line ctx">      INDEX,</div>
+      <div class="line add">+     TEXT_FIELDS,</div>
+      <div class="line add">+     DATE_FIELDS,</div>
+      <div class="line add">+     BOOLEAN_FIELDS,</div>
+      <div class="line ctx">      toDocument,</div>
+      <div class="line ctx">      upsert,</div>
+      <div class="line ctx">      remove,</div>
+      <div class="line rem">-     sync</div>
+      <div class="line add">+     sync,</div>
+      <div class="line add">+     buildQuery,</div>
+      <div class="line add">+     searchIds</div>
+      <div class="line ctx">  };</div>
+    </div>
+
+    <h3 class="block-title">Controller novo: as duas etapas</h3>
+
+    <div class="diff">
+      <div class="diff-head">src/app/Http/Controllers/UserApi/SearchUserController.js</div>
+      <div class="line add">+ import UserModel from "../../../Models/UserModel.js";</div>
+      <div class="line add">+ import UserElasticService from "../../../Services/UserElasticService.js";</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ /**</div>
+      <div class="line add">+  * Busca de usuários em duas etapas.</div>
+      <div class="line add">+  *</div>
+      <div class="line add">+  * Rota: POST /users/search</div>
+      <div class="line add">+  * Body: { "filters": { "city": "paulo", "is_active": true, ... }, "page": 1, "limit": 20 }</div>
+      <div class="line add">+  *</div>
+      <div class="line add">+  * 1) Elasticsearch: resolve os filtros (texto como LIKE '%valor%', datas por intervalo,</div>
+      <div class="line add">+  *    booleano exato) e devolve SÓ os ids.</div>
+      <div class="line add">+  * 2) Postgres: WHERE id IN (...) pela chave primária, que é a fonte da verdade.</div>
+      <div class="line add">+  */</div>
+      <div class="line add">+ export default async function SearchUserController(request, response) {</div>
+      <div class="line add">+     try {</div>
+      <div class="line add">+         const filters = request.body.filters || {};</div>
+      <div class="line add">+         const pageRequest = Number(request.body.page) || 1;</div>
+      <div class="line add">+         const limitRequest = Number(request.body.limit) || 20;</div>
+      <div class="line add">+ </div>
+      <div class="line add">+         const page = (pageRequest &lt; 1) ? 1 : pageRequest;</div>
+      <div class="line add">+         const limit = (limitRequest &gt; 100 || limitRequest &lt; 1) ? 20 : limitRequest;</div>
+      <div class="line add">+ </div>
+      <div class="line add">+         if (typeof filters !== "object" || Array.isArray(filters)) {</div>
+      <div class="line add">+             return response.status(400).json({ error: "filters deve ser um objeto" });</div>
+      <div class="line add">+         }</div>
+      <div class="line add">+ </div>
+      <div class="line add">+         // Etapa 1: quem aparece (e em que ordem) é decidido pelo Elastic</div>
+      <div class="line add">+         let result = null;</div>
+      <div class="line add">+ </div>
+      <div class="line add">+         try {</div>
+      <div class="line add">+             result = await UserElasticService.searchIds(filters, { page, limit });</div>
+      <div class="line add">+         } catch (error) {</div>
+      <div class="line add">+             if (error.message.startsWith("Campo de busca inválido")) {</div>
+      <div class="line add">+                 return response.status(400).json({ error: error.message });</div>
+      <div class="line add">+             }</div>
+      <div class="line add">+ </div>
+      <div class="line add">+             throw error;</div>
+      <div class="line add">+         }</div>
+      <div class="line add">+ </div>
+      <div class="line add">+         if (result.ids.length === 0) {</div>
+      <div class="line add">+             return response.json({ page: page, limit: limit, total: result.total, data: [] });</div>
+      <div class="line add">+         }</div>
+      <div class="line add">+ </div>
+      <div class="line add">+         // Etapa 2: o que aparece vem do Postgres, pela chave primária</div>
+      <div class="line add">+         const users = await UserModel.findAll({</div>
+      <div class="line add">+             where: { id: result.ids },</div>
+      <div class="line add">+             attributes: { exclude: ["password"] }</div>
+      <div class="line add">+         });</div>
+      <div class="line add">+ </div>
+      <div class="line add">+         // O WHERE IN não garante a ordem: reordena pelos ids que vieram do Elastic.</div>
+      <div class="line add">+         // Usuário excluído no Postgres e ainda no Elastic simplesmente some daqui.</div>
+      <div class="line add">+         const usersById = new Map(users.map((user) =&gt; [user.id, user]));</div>
+      <div class="line add">+ </div>
+      <div class="line add">+         const data = result.ids</div>
+      <div class="line add">+             .map((id) =&gt; usersById.get(id))</div>
+      <div class="line add">+             .filter((user) =&gt; user !== undefined);</div>
+      <div class="line add">+ </div>
+      <div class="line add">+         return response.json({</div>
+      <div class="line add">+             page: page,</div>
+      <div class="line add">+             limit: limit,</div>
+      <div class="line add">+             total: result.total,</div>
+      <div class="line add">+             data: data</div>
+      <div class="line add">+         });</div>
+      <div class="line add">+     } catch (error) {</div>
+      <div class="line add">+         console.error(error);</div>
+      <div class="line add">+ </div>
+      <div class="line add">+         return response.status(500).json({</div>
+      <div class="line add">+             error: "Internal server error"</div>
+      <div class="line add">+         });</div>
+      <div class="line add">+     }</div>
+      <div class="line add">+ }</div>
+    </div>
+
+    <h3 class="block-title">Rota</h3>
+
+    <div class="diff">
+      <div class="diff-head">src/routes/apis/userRouter.js</div>
+      <div class="line ctx">  import UploadImageController from '../../app/Http/Controllers/UserApi/UploadImageController.js';</div>
+      <div class="line add">+ import SearchUserController from '../../app/Http/Controllers/UserApi/SearchUserController.js';</div>
+      <div class="line ctx">  ...</div>
+      <div class="line ctx">      router.post('/', CreateUserController);</div>
+      <div class="line add">+ </div>
+      <div class="line add">+     // Busca em duas etapas: Elasticsearch (ids) → Postgres (WHERE IN)</div>
+      <div class="line add">+     router.post('/search', SearchUserController);</div>
+    </div>
+
+    <h3 class="block-title">Swagger: o body explicado campo a campo</h3>
+
+    <div class="diff">
+      <div class="diff-head">src/docs/02_User.json (nova rota /users/search → post, resumo)</div>
+      <div class="line add">+ "summary": "Busca de usuários (Elasticsearch + Postgres)",</div>
+      <div class="line add">+ "description": "passo a passo das 2 etapas + tabela campo / tipo / como é buscado + regras",</div>
+      <div class="line add">+ "requestBody": {</div>
+      <div class="line add">+     "filters": { name, email, job_title, bio, city, state  → texto, "contém"</div>
+      <div class="line add">+                  is_active                                 → booleano exato</div>
+      <div class="line add">+                  birth_date, created_at { gte, lte }       → intervalo de datas },</div>
+      <div class="line add">+     "page":  1..,   "limit": 1..100 (padrão 20),</div>
+      <div class="line add">+     "examples": contém em texto · vários filtros juntos · nascidos nos anos 90 · só inativos · todos paginado</div>
+      <div class="line add">+ },</div>
+      <div class="line add">+ "responses": { 200 (usuários sem senha), 400 (campo inválido), 500 }</div>
+    </div>
+
+    <div class="why">
+      <div class="why-card">
+        <h4>Quem aparece x o que aparece</h4>
+        <p>O Elastic decide <strong>quem</strong> aparece e em que ordem (<code class="inline">_source: false</code>: só ids, já com <code class="inline">from</code>/<code class="inline">size</code> da página). O Postgres decide <strong>o que</strong> aparece: os dados vêm da fonte da verdade. Um usuário excluído há pouco, que o job ainda não tirou do índice, não volta no <code class="inline">WHERE IN</code> e some da resposta.</p>
+      </div>
+      <div class="why-card">
+        <h4>LIKE '%x%' no Elastic</h4>
+        <p><code class="inline">wildcard</code> com <code class="inline">*valor*</code> no subcampo <code class="inline">.keyword</code> (o valor inteiro, sem quebrar em palavras) e <code class="inline">case_insensitive: true</code>. O <code class="inline">escapeWildcard</code> transforma <code class="inline">*</code> e <code class="inline">?</code> digitados pelo usuário em texto, para não virarem curinga.</p>
+      </div>
+      <div class="why-card">
+        <h4>Reordenar</h4>
+        <p>O <code class="inline">WHERE IN</code> não garante ordem nenhuma. O <code class="inline">Map</code> por id remonta a lista na ordem que o Elastic devolveu.</p>
+      </div>
+      <div class="why-card">
+        <h4>Filtros em bool.filter</h4>
+        <p>Todos os filtros entram no <code class="inline">bool.filter</code>: valem juntos (E), sem cálculo de relevância. Campo fora das listas → <code class="inline">buildQuery</code> lança erro → 400. Sem <code class="inline">else</code>: <code class="inline">continue</code> em cada tipo de campo.</p>
+      </div>
+    </div>
+
+    <div class="callout">
+      <span class="icon"><i class="fa-solid fa-triangle-exclamation"></i></span>
+      <div>
+        <strong>Para a busca achar alguém:</strong>
+        <p>o índice <code class="inline">users</code> precisa existir e estar populado. Hoje só entram os usuários criados/editados depois da etapa 10; falta a carga inicial (<code class="inline">_bulk</code>). E o <code class="inline">wildcard</code> depende do subcampo <code class="inline">.keyword</code> que o mapping dinâmico do Elastic cria sozinho: se o índice ganhar mapping explícito, os campos de texto precisam manter um <code class="inline">keyword</code>.</p>
+      </div>
+    </div>
+
+    <div class="callout">
+      <span class="icon"><i class="fa-solid fa-gauge-high"></i></span>
+      <div>
+        <strong>Desempenho:</strong>
+        <p><code class="inline">wildcard</code> com <code class="inline">*</code> no começo é a consulta mais cara do Elastic (varre todos os termos). Serve para o tamanho da aula e é exatamente o "contém" pedido; com muitos dados, o caminho é <code class="inline">match</code> com analisadores ou n-grams.</p>
+      </div>
+    </div>
+
+    <div class="ok">
+      <strong><i class="fa-solid fa-circle-check"></i> Verificado:</strong>
+      <p><code class="inline">node --check</code> no controller e no router; <code class="inline">buildQuery()</code> rodado isolado gera <code class="inline">wildcard</code> + <code class="inline">term</code> + <code class="inline">range</code> e escapa o <code class="inline">*</code> digitado; JSON do Swagger válido. A API ainda não foi executada de ponta a ponta.</p>
     </div>
   </div>
 
