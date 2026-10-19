@@ -232,15 +232,19 @@ h1 .accent{ color: var(--accent); }
 .pulse{ fill: var(--flow); }
 
 /* camadas desligadas */
-.stage.hide-net .wire.net, .stage.hide-net .wire-label.net{ opacity: 0; }
-.stage.hide-vol .wire.vol, .stage.hide-vol .volume, .stage.hide-vol .bind{ opacity: 0; pointer-events: none; }
-.stage.hide-port .wire.port, .stage.hide-port .port{ opacity: 0; pointer-events: none; }
 
 /* foco: o resto apaga */
 .stage.focus .item:not(.lit){ opacity: var(--dim); }
 .stage.focus .wire:not(.hot):not(.flow), .stage.focus .wire-label:not(.lit){ opacity: .07; }
 .stage .wire-label.vol:not(.lit){ opacity: 0; }
 .stage .wire.only-scenario:not(.hot):not(.flow), .stage .wire-label.only-scenario:not(.lit){ opacity: 0; }
+/* filtros de camada: depois do esmaecimento do foco/cenário, e com !important para vencer o esmaecimento (mais específico) */
+.stage.hide-net .wire.net, .stage.hide-net .wire-label.net{ opacity: 0 !important; }
+/* volumes internos e pastas do PC: cada filtro esconde a seta, o ícone e o badge do container */
+.stage.hide-vol .wire.m-volume, .stage.hide-vol .volume, .stage.hide-vol .mount-badge.vol{ opacity: 0 !important; pointer-events: none; }
+.stage.hide-bind .wire.m-bind, .stage.hide-bind .bind, .stage.hide-bind .mount-badge:not(.vol){ opacity: 0 !important; pointer-events: none; }
+.stage.hide-port .wire.port, .stage.hide-port .port{ opacity: 0 !important; pointer-events: none; }
+.stage.hide-net .pulse.net, .stage.hide-port .pulse.port, .stage.hide-vol .pulse.m-volume, .stage.hide-bind .pulse.m-bind{ opacity: 0 !important; }
 .item.lit{ box-shadow: 0 0 0 4px var(--flow); }
 .volume.lit, .bind.lit, .port.lit{ box-shadow: none; transform: scale(1.12); }
 /* volume/pasta acesos: mesmo contorno dos containers, no ícone */

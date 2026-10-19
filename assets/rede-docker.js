@@ -197,7 +197,7 @@
       var pts = [start].concat(mids, [end]);
       var d = 'M' + pts.map(function(p){ return p[0].toFixed(1) + ',' + p[1].toFixed(1); }).join(' L');
 
-      var attrs = { d: d, class: 'wire ' + edge.kind + (edge.flow ? ' ' + edge.flow : '') + (edge.scenarioOnly ? ' only-scenario' : ''), 'data-id': edge.id };
+      var attrs = { d: d, class: 'wire ' + edge.kind + (edge.flow ? ' ' + edge.flow : '') + (edge.scenarioOnly ? ' only-scenario' : '') + (edge.anchor ? ' m-bind' : '') + (edge.src ? ' m-volume' : ''), 'data-id': edge.id };
       attrs['marker-end'] = 'url(#arrow)';
       var path = el('path', attrs);
       svg.appendChild(path);
@@ -348,7 +348,8 @@
     if(!scenario){ return; }
     var ids = scenarioEdges(SCENARIOS[scenario]);
     ids.forEach(function(id, i){
-      var c = el('circle', { r: 6, class: 'pulse' });
+      /* a bolinha leva as classes da seta (net, port, m-bind...) para sumir junto com o filtro */
+      var c = el('circle', { r: 6, class: 'pulse ' + paths[id].getAttribute('class').replace('wire ', '') });
       svg.appendChild(c);
       dots.push({ node: c, path: paths[id], offset: i / ids.length });
     });
