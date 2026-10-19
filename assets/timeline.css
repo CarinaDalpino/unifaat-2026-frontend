@@ -112,6 +112,8 @@
     color: var(--muted-2);
     margin: 0 0 40px;
   }
+  /* uma informação por linha (professor, repositório, documentação) */
+  .meta.stack{ flex-direction: column; gap: 4px; }
   .meta strong{ color: var(--ink); font-weight: 600; }
   .meta a{ color: var(--accent-2); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; overflow-wrap: anywhere; }
 
