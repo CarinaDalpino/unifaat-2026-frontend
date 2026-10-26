@@ -26,6 +26,7 @@ import LoginViewController from '../app/Http/Controllers/Views/LoginViewControll
 import RedirectIfAuthenticatedMiddleware from '../app/Http/Middlewares/RedirectIfAuthenticatedMiddleware.js';
 import RedirectIfGuestMiddleware from '../app/Http/Middlewares/RedirectIfGuestMiddleware.js';
 import TasksViewController from '../app/Http/Controllers/Views/TasksViewController.js';
+import CounterViewController from '../app/Http/Controllers/Views/CounterViewController.js';
 import LogoutController from '../app/Http/Controllers/Views/LogoutController.js';
 import UsersViewController from '../app/Http/Controllers/Views/UsersViewController.js';
 
@@ -88,6 +89,9 @@ router.use(express.static(path.join(CONSTANTS.DIR, 'public')));
 
 /** Hello world: GET /hello?nome=Luan */
 router.get('/hello', HelloWorldController);
+
+/** Contador em React: View pública, sem login e sem middleware (demonstração de estado) */
+router.get('/contador', CounterViewController);
 
 /** Login: se já tem sessão válida, o middleware redireciona antes do HTML existir */
 router.get('/login', RedirectIfAuthenticatedMiddleware, LoginViewController);
