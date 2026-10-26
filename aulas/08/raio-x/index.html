@@ -113,6 +113,10 @@ npm install -D @types/react @types/react-dom @vitejs/plugin-react</div>
         <h4>devDependencies</h4>
         <p><code class="inline">@types/*</code> e o plugin só existem em tempo de build: o navegador recebe só o JavaScript compilado.</p>
       </div>
+      <div class="why-card">
+        <h4>package-lock.json</h4>
+        <p>O <code class="inline">npm install</code> também atualiza o <code class="inline">src/package-lock.json</code> (versões exatas de tudo que entrou). Ele vai no mesmo commit e não se edita à mão.</p>
+      </div>
     </div>
 
     <div class="ok">
@@ -525,6 +529,16 @@ npm install -D @types/react @types/react-dom @vitejs/plugin-react</div>
       <div class="line add">+             &lt;/main&gt;</div>
       <div class="line add">+         &lt;/&gt;</div>
       <div class="line ctx">      )</div>
+    </div>
+
+    <div class="diff">
+      <div class="diff-head">src/resources/js/pages/tasks.tsx</div>
+      <div class="line ctx">  const idUser = Number(root.dataset.idUser)</div>
+      <div class="line add">+ const userName = root.dataset.userName ?? ""</div>
+      <div class="line ctx">  const initialTasks: Task[] = JSON.parse(root.dataset.tasks ?? "[]")</div>
+      <div class="line ctx"></div>
+      <div class="line rem">- createRoot(root).render(&lt;TaskApp idUser={idUser} initialTasks={initialTasks} /&gt;)</div>
+      <div class="line add">+ createRoot(root).render(&lt;TaskApp idUser={idUser} userName={userName} initialTasks={initialTasks} /&gt;)</div>
     </div>
 
     <div class="why">
@@ -1654,6 +1668,20 @@ GET /login<br>
       <div class="line add">+ </div>
       <div class="line add">+     return next();</div>
       <div class="line add">+ }</div>
+    </div>
+
+    <div class="diff">
+      <div class="diff-head">src/routes/router.js (a rota /tasks com o middleware)</div>
+      <div class="line ctx">  import RedirectIfAuthenticatedMiddleware from '../app/Http/Middlewares/RedirectIfAuthenticatedMiddleware.js';</div>
+      <div class="line add">+ import RedirectIfGuestMiddleware from '../app/Http/Middlewares/RedirectIfGuestMiddleware.js';</div>
+      <div class="line add">+ import TasksViewController from '../app/Http/Controllers/Views/TasksViewController.js';</div>
+      <div class="line ctx"></div>
+      <div class="line ctx">  ...</div>
+      <div class="line ctx"></div>
+      <div class="line add">+ /** Tasks (React dentro da View): sem sessão válida, o middleware redireciona para /login antes do HTML existir */</div>
+      <div class="line add">+ router.get('/tasks', RedirectIfGuestMiddleware, TasksViewController);</div>
+      <div class="line add">+ </div>
+      <div class="line ctx">  /**</div>
     </div>
 
     <div class="why">
