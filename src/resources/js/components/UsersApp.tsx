@@ -3,7 +3,7 @@ import type { PaginatedResponse, Task, User } from "../types/api"
 import { userListApi } from "../api/userListApi"
 import { tasksListApi } from "../api/tasksListApi"
 import { getErrorMessage } from "../utils/getErrorMessage"
-import { Header } from "./Header"
+import { Page } from "./Page"
 import { UserTasks } from "./UserTasks"
 
 type UsersAppProps = {
@@ -44,9 +44,7 @@ export function UsersApp({ userName, initialUsers }: UsersAppProps) {
 
     return (
         <>
-            <Header userName={userName} active="users" />
-
-            <main className="container flex-grow-1 py-5">
+            <Page userName={userName} active="users">
                 <div className="row g-4">
                     <section className="col-lg-6">
                         <h2 className="h5">Usuários ({list.total})</h2>
@@ -81,7 +79,7 @@ export function UsersApp({ userName, initialUsers }: UsersAppProps) {
                         <UserTasks user={selected} tasks={tasks} error={error} />
                     </section>
                 </div>
-            </main>
+            </Page>
         </>
     )
 }

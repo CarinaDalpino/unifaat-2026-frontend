@@ -4,7 +4,7 @@ import { taskCreateApi } from "../api/taskCreateApi"
 import { taskUpdateApi } from "../api/taskUpdateApi"
 import { taskDeleteApi } from "../api/taskDeleteApi"
 import { TaskItem } from "./TaskItem"
-import { Header } from "./Header"
+import { Page } from "./Page"
 import { Alert } from "./Alert"
 import { AssignTaskModal } from "./AssignTaskModal"
 
@@ -56,9 +56,7 @@ export function TaskApp({ idUser, userName, initialTasks }: TaskAppProps) {
 
     return (
         <>
-            <Header userName={userName} active="tasks" />
-
-            <main className="container flex-grow-1 py-5">
+            <Page userName={userName} active="tasks">
                 <section>
                     {message !== "" && <Alert variant="success" message={message} onClose={() => setMessage("")} />}
 
@@ -85,7 +83,7 @@ export function TaskApp({ idUser, userName, initialTasks }: TaskAppProps) {
                         ))}
                     </ul>
                 </section>
-            </main>
+            </Page>
 
             <AssignTaskModal
                 isOpen={isModalOpen}
