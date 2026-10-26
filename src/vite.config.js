@@ -52,7 +52,7 @@ export default defineConfig({
                 // Entradas avulsas, usadas pelas Views (EJS) via helper vite()
                 "./resources/css/app.css",
                 "./resources/js/app.ts",
-                "./resources/js/pages/login.ts",
+                "./resources/js/pages/login.tsx",
                 "./resources/js/pages/tasks.tsx",
                 "./resources/js/pages/users.tsx"
             ],
