@@ -1,10 +1,12 @@
 import { useState } from "react"
-import type { Task } from "../types/api"
+import type { Task, User } from "../types/api"
 import { taskCreateApi } from "../api/taskCreateApi"
 import { taskUpdateApi } from "../api/taskUpdateApi"
 import { taskDeleteApi } from "../api/taskDeleteApi"
 import { TaskItem } from "./TaskItem"
 import { Header } from "./Header"
+import { Alert } from "./Alert"
+import { AssignTaskModal } from "./AssignTaskModal"
 
 type TaskAppProps = {
     idUser: number
@@ -15,6 +17,8 @@ type TaskAppProps = {
 export function TaskApp({ idUser, userName, initialTasks }: TaskAppProps) {
     const [tasks, setTasks] = useState<Task[]>(initialTasks)
     const [name, setName] = useState("")
+    const [isModalOpen, setIsModalOpen] = useState(false)
+    const [message, setMessage] = useState("")
 
     const pending = tasks.filter(task => !task.is_done).length
 
@@ -42,12 +46,28 @@ export function TaskApp({ idUser, userName, initialTasks }: TaskAppProps) {
         setTasks(current => current.filter(task => task.id !== id))
     }
 
+    // TF07: a task foi criada para outro usuário (ou para mim mesmo)
+    function handleAssigned(created: Task, user: User) {
+        // Só entra na lista se a task é minha: se foi para outra pessoa, a lista dela não é esta
+        if (user.id === idUser) setTasks(current => [...current, created])
+
+        setMessage(`Tarefa criada para ${user.name}`)
+    }
+
     return (
         <>
             <Header userName={userName} active="tasks" />
 
             <main className="container flex-grow-1 py-5">
                 <section>
+                    {message !== "" && <Alert variant="success" message={message} onClose={() => setMessage("")} />}
+
+                    <div className="d-flex justify-content-end mb-3">
+                        <button className="btn btn-outline-primary" onClick={() => setIsModalOpen(true)}>
+                            Nova tarefa para outro usuário
+                        </button>
+                    </div>
+
                     <div className="input-group mb-3">
                         <input
                             className="form-control"
@@ -66,6 +86,12 @@ export function TaskApp({ idUser, userName, initialTasks }: TaskAppProps) {
                     </ul>
                 </section>
             </main>
+
+            <AssignTaskModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                onCreated={handleAssigned}
+            />
         </>
     )
 }
