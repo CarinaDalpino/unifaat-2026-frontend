@@ -8,7 +8,7 @@
 (function(){
   var NS = 'http://www.w3.org/2000/svg';
   var W = 1800;
-  var H = 830;
+  var H = 548;
   var R = 15;
   var svg = document.getElementById('git');
   svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
@@ -18,15 +18,12 @@
     prof: { y: 136, name: 'main' },
     A_main: { y: 300, name: 'main' },
     A_tf8: { y: 380, name: 'RA-tf-08' },
-    A_tf9: { y: 460, name: 'RA-tf-09' },
-    B_main: { y: 632, name: 'main' },
-    B_tf8: { y: 712, name: 'RA-tf-08' }
+    A_tf9: { y: 460, name: 'RA-tf-09' }
   };
 
   var FRAMES = [
     { s: 0, cls: 'prof', x: 20, y: 44, w: 1760, h: 150, title: 'Professor · github.com/luan-tavares/unifaat-2026-frontend  (upstream)' },
-    { s: 1, cls: '', x: 20, y: 214, w: 1760, h: 312, title: 'Aluno A · fork github.com/ALUNO-A/unifaat-2026-frontend  (origin)' },
-    { s: 1, cls: '', x: 20, y: 546, w: 1760, h: 232, title: 'Aluno B · fork github.com/ALUNO-B/unifaat-2026-frontend  (origin)' }
+    { s: 1, cls: '', x: 20, y: 214, w: 1760, h: 312, title: 'Aluno · fork github.com/ALUNO/unifaat-2026-frontend  (origin)' }
   ];
 
   /* h = hash (mesmo hash = mesmo commit copiado), k = tipo, s = passo em que aparece,
@@ -41,12 +38,8 @@
     { id: 'A3', h: '5d0e8a7', lane: 'A_main', x: 1010, m: 'Aula 09', k: 'base', s: 7, p: 'A2', via: 'git pull (merge ff)' },
     { id: 'At1', h: 'a11f0b2', lane: 'A_tf8', x: 760, m: 'TF-08', k: 'tf', s: 4, p: 'A2' },
     { id: 'At2', h: 'a2c9d34', lane: 'A_tf8', x: 880, m: 'ajustes', k: 'tf', s: 4, p: 'At1' },
-    { id: 'Au1', h: 'a39c77d', lane: 'A_tf9', x: 1130, m: 'TF-09', k: 'tf', s: 8, p: 'A3' },
+    { id: 'Au1', h: 'a39c77d', lane: 'A_tf9', x: 1130, m: 'TF-09', k: 'tf', s: 8, p: 'A3' }
 
-    { id: 'B1', h: '7f3a2c1', lane: 'B_main', x: 360, m: 'Aula 07', k: 'base', s: 1, via: 'fork' },
-    { id: 'B2', h: 'c91be04', lane: 'B_main', x: 640, m: 'Aula 08', k: 'base', s: 3, p: 'B1', via: 'git pull (merge ff)' },
-    { id: 'B3', h: '5d0e8a7', lane: 'B_main', x: 1010, m: 'Aula 09', k: 'base', s: 7, p: 'B2', via: 'git pull (merge ff)' },
-    { id: 'Bt1', h: 'b77e1c5', lane: 'B_tf8', x: 760, m: 'TF-08', k: 'tf', s: 4, p: 'B2' }
   ];
 
   /* at = [[passo, commit]...]: onde o ponteiro está a partir de cada passo;
@@ -54,19 +47,14 @@
   var TAGS = [
     { id: 'tp', t: 'main', kind: 'main', at: [[0, 'P1'], [2, 'P2'], [6, 'P3']] },
     { id: 'ta', t: 'main', kind: 'main', at: [[1, 'A1'], [3, 'A2'], [7, 'A3']] },
-    { id: 'tb', t: 'main', kind: 'main', at: [[1, 'B1'], [3, 'B2'], [7, 'B3']] },
     { id: 'ta8', t: 'RA-tf-08', kind: 'leaf', at: [[4, 'At2']], push: 5 },
-    { id: 'tb8', t: 'RA-tf-08', kind: 'leaf', at: [[4, 'Bt1']], push: 5 },
     { id: 'ta9', t: 'RA-tf-09', kind: 'leaf', at: [[8, 'Au1']], push: 9 }
   ];
 
   var NOTES = [
     { f: 1, t: 1, k: 'text', c: 'warn', a: 'start', x: 640, y: 240, s: '1º FORK no GitHub, 2º clone do SEU fork' },
-    { f: 1, t: 1, k: 'text', c: 'warn', a: 'start', x: 640, y: 572, s: '1º FORK no GitHub, 2º clone do SEU fork' },
     { f: 2, t: 2, k: 'text', c: 'warn', a: 'middle', x: 360, y: LANES.A_main.y + 66, s: '1 commit atrás' },
-    { f: 2, t: 2, k: 'text', c: 'warn', a: 'middle', x: 360, y: LANES.B_main.y + 66, s: '1 commit atrás' },
     { f: 3, t: 3, k: 'text', c: 'info', a: 'middle', x: 640, y: LANES.A_main.y + 66, s: 'fast-forward: só o ponteiro anda' },
-    { f: 3, t: 3, k: 'text', c: 'info', a: 'middle', x: 640, y: LANES.B_main.y + 66, s: 'fast-forward: só o ponteiro anda' },
 
     /* Pull Request: da folha do fork para o main do professor (nunca é mergeado) */
     { f: 5, t: 5, k: 'pr', x1: 880, y1: LANES.A_tf8.y - 62, x2: 640, y2: LANES.prof.y },
@@ -82,10 +70,8 @@
     { f: 7, t: 7, k: 'text', c: 'accent', a: 'end', x: 902, y: 262, s: 'git diff RA-tf-08 upstream/main' },
 
     { f: 10, t: 10, k: 'text', c: 'warn', a: 'start', x: 934, y: LANES.A_tf8.y + 4, s: '✗ nunca merge' },
-    { f: 10, t: 10, k: 'text', c: 'warn', a: 'start', x: 816, y: LANES.B_tf8.y + 4, s: '✗ nunca merge' },
     { f: 10, t: 10, k: 'text', c: 'warn', a: 'start', x: 1186, y: LANES.A_tf9.y + 4, s: '✗ nunca merge' },
-    { f: 10, t: 10, k: 'text', c: 'info', a: 'start', x: 1040, y: LANES.A_main.y + 4, s: '🔒 main: só git pull' },
-    { f: 10, t: 10, k: 'text', c: 'info', a: 'start', x: 1040, y: LANES.B_main.y + 4, s: '🔒 main: só git pull' }
+    { f: 10, t: 10, k: 'text', c: 'info', a: 'start', x: 1040, y: LANES.A_main.y + 4, s: '🔒 main: só git pull' }
   ];
 
   /* ph: fase do passo.
