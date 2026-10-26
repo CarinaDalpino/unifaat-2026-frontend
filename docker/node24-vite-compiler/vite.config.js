@@ -51,7 +51,8 @@ export default defineConfig({
                 "./resources/css/app.css",
                 "./resources/js/app.ts",
                 "./resources/js/pages/login.ts",
-                "./resources/js/pages/tasks.tsx"
+                "./resources/js/pages/tasks.tsx",
+                "./resources/js/pages/users.tsx"
             ],
             output: {
                 assetFileNames: 'src/[name].[hash][extname]',

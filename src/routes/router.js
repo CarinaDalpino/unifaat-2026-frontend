@@ -27,6 +27,7 @@ import RedirectIfAuthenticatedMiddleware from '../app/Http/Middlewares/RedirectI
 import RedirectIfGuestMiddleware from '../app/Http/Middlewares/RedirectIfGuestMiddleware.js';
 import TasksViewController from '../app/Http/Controllers/Views/TasksViewController.js';
 import LogoutController from '../app/Http/Controllers/Views/LogoutController.js';
+import UsersViewController from '../app/Http/Controllers/Views/UsersViewController.js';
 
 const router = Router();
 
@@ -96,6 +97,9 @@ router.get('/logout', LogoutController);
 
 /** Tasks (React dentro da View): sem sessão válida, o middleware redireciona para /login antes do HTML existir */
 router.get('/tasks', RedirectIfGuestMiddleware, TasksViewController);
+
+/** Usuários (React dentro da View): mesmo middleware, que verifica o JWT antes de renderizar */
+router.get('/usuarios', RedirectIfGuestMiddleware, UsersViewController);
 
 /**
  * Rota de documentação Swagger
