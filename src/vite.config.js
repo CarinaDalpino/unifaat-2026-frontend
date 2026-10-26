@@ -1,4 +1,5 @@
 import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
 import path from 'node:path'
 import fs from 'node:fs'
 
@@ -26,6 +27,7 @@ function copyStaticAssets(root, outDir, items) {
 export default defineConfig({
     root: 'resources',
     plugins: [
+        react(),
         copyStaticAssets('resources', '../public', ['404.html', 'example.json', 'img'])
     ],
     server: {
@@ -50,7 +52,8 @@ export default defineConfig({
                 // Entradas avulsas, usadas pelas Views (EJS) via helper vite()
                 "./resources/css/app.css",
                 "./resources/js/app.ts",
-                "./resources/js/pages/login.ts"
+                "./resources/js/pages/login.ts",
+                "./resources/js/pages/tasks.tsx"
             ],
             output: {
                 assetFileNames: 'src/[name].[hash][extname]',

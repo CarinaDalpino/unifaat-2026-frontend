@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tasks - Minhas Tarefas</title>
+  <link rel="icon" type="image/png" href="/img/favicon.ico">
+  <%- vite(["css/app.css", "js/app.ts", "js/pages/tasks.tsx"]) %>
+</head>
+
+<body class="d-flex flex-column min-vh-100 bg-light">
+
+  <header class="bg-primary text-white py-4 px-4 shadow-sm">
+    <h1 class="h3 m-0">Tasks de <%= user.name %></h1>
+  </header>
+
+  <main class="container flex-grow-1 py-5">
+    <%# O servidor entrega o id do usuário e as tasks já lidas do banco; o React monta o resto %>
+    <div id="root"
+         data-id-user="<%= user.id %>"
+         data-tasks="<%= JSON.stringify(tasks) %>"></div>
+  </main>
+
+  <footer class="bg-primary text-white text-center py-3 mt-auto">
+    <div class="small">Frontend 2026.2</div>
+  </footer>
+</body>
+
+</html>

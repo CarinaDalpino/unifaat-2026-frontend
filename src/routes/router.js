@@ -24,6 +24,8 @@ import SwaggerDoc from '../app/Http/SwaggerDoc.js';
 import HelloWorldController from '../app/Http/Controllers/Views/HelloWorldController.js';
 import LoginViewController from '../app/Http/Controllers/Views/LoginViewController.js';
 import RedirectIfAuthenticatedMiddleware from '../app/Http/Middlewares/RedirectIfAuthenticatedMiddleware.js';
+import RedirectIfGuestMiddleware from '../app/Http/Middlewares/RedirectIfGuestMiddleware.js';
+import TasksViewController from '../app/Http/Controllers/Views/TasksViewController.js';
 
 const router = Router();
 
@@ -87,6 +89,9 @@ router.get('/hello', HelloWorldController);
 
 /** Login: se já tem sessão válida, o middleware redireciona antes do HTML existir */
 router.get('/login', RedirectIfAuthenticatedMiddleware, LoginViewController);
+
+/** Tasks (React dentro da View): sem sessão válida, o middleware redireciona para /login antes do HTML existir */
+router.get('/tasks', RedirectIfGuestMiddleware, TasksViewController);
 
 /**
  * Rota de documentação Swagger
