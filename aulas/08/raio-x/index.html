@@ -30,7 +30,7 @@
   <p class="meta">
     <span><i class="fa-solid fa-folder"></i> src/ · docker/node24-vite-compiler/</span>
     <span><i class="fa-solid fa-calendar-days"></i> 26/10/2026</span>
-    <span><i class="fa-solid fa-wrench"></i> 22 etapas</span>
+    <span><i class="fa-solid fa-wrench"></i> 23 etapas</span>
   </p>
 </header>
 
@@ -1877,6 +1877,138 @@ GET /login<br>
     <div class="ok">
       <strong><i class="fa-solid fa-circle-check"></i> Testado:</strong>
       <p>Verificado por leitura e <code class="inline">node --check</code>.</p>
+    </div>
+  </div>
+
+  <!-- ETAPA 23 -->
+  <div class="entry" id="etapa-23">
+    <div class="entry-dot">23</div>
+    <div class="entry-date">Etapa 23 · Contador público</div>
+    <h2>Um contador em React, sem login</h2>
+    <p class="sub">Uma View pública (<code class="inline">GET /contador</code>) com um componente de estado bem simples, para mostrar o <code class="inline">useState</code> sem nada em volta.</p>
+
+    <div class="diff">
+      <div class="diff-head">src/resources/js/components/Counter.tsx</div>
+      <div class="line add">+ import { useState } from "react"</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ export function Counter() {</div>
+      <div class="line add">+     const [count, setCount] = useState(0)</div>
+      <div class="line add">+ </div>
+      <div class="line add">+     function handleIncrement() {</div>
+      <div class="line add">+         setCount(current =&gt; current + 1)</div>
+      <div class="line add">+     }</div>
+      <div class="line add">+ </div>
+      <div class="line add">+     function handleDecrement() {</div>
+      <div class="line add">+         setCount(current =&gt; current - 1)</div>
+      <div class="line add">+     }</div>
+      <div class="line add">+ </div>
+      <div class="line add">+     function handleReset() {</div>
+      <div class="line add">+         setCount(0)</div>
+      <div class="line add">+     }</div>
+      <div class="line add">+ </div>
+      <div class="line add">+     return (</div>
+      <div class="line add">+         &lt;div className="text-center"&gt;</div>
+      <div class="line add">+             &lt;p className="display-1"&gt;{count}&lt;/p&gt;</div>
+      <div class="line add">+             &lt;button className="btn btn-danger me-2" onClick={handleDecrement}&gt;-1&lt;/button&gt;</div>
+      <div class="line add">+             &lt;button className="btn btn-secondary me-2" onClick={handleReset}&gt;Zerar&lt;/button&gt;</div>
+      <div class="line add">+             &lt;button className="btn btn-primary" onClick={handleIncrement}&gt;+1&lt;/button&gt;</div>
+      <div class="line add">+         &lt;/div&gt;</div>
+      <div class="line add">+     )</div>
+      <div class="line add">+ }</div>
+    </div>
+
+    <div class="diff">
+      <div class="diff-head">src/app/Http/Controllers/Views/CounterViewController.js</div>
+      <div class="line add">+ /**</div>
+      <div class="line add">+  * Contador em React como View pública: sem login, sem middleware.</div>
+      <div class="line add">+  * O HTML vem de resources/views/counter.ejs; o contador é um componente React.</div>
+      <div class="line add">+  *</div>
+      <div class="line add">+  * Rota: GET /contador</div>
+      <div class="line add">+  */</div>
+      <div class="line add">+ export default function CounterViewController(request, response) {</div>
+      <div class="line add">+     return response.status(200).render("counter");</div>
+      <div class="line add">+ }</div>
+    </div>
+
+    <div class="diff">
+      <div class="diff-head">src/resources/views/counter.ejs</div>
+      <div class="line add">+ &lt;!DOCTYPE html&gt;</div>
+      <div class="line add">+ &lt;html lang="pt-BR"&gt;</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ &lt;head&gt;</div>
+      <div class="line add">+   &lt;meta charset="UTF-8" /&gt;</div>
+      <div class="line add">+   &lt;meta name="viewport" content="width=device-width, initial-scale=1" /&gt;</div>
+      <div class="line add">+   &lt;title&gt;Contador - Estado em React&lt;/title&gt;</div>
+      <div class="line add">+   &lt;link rel="icon" type="image/png" href="/img/favicon.ico"&gt;</div>
+      <div class="line add">+   &lt;%- vite(["css/app.css", "js/app.ts", "js/pages/counter.tsx"]) %&gt;</div>
+      <div class="line add">+ &lt;/head&gt;</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ &lt;body class="container py-5"&gt;</div>
+      <div class="line add">+ </div>
+      <div class="line add">+   &lt;h1 class="text-primary text-center mb-4"&gt;Contador&lt;/h1&gt;</div>
+      <div class="line add">+ </div>
+      <div class="line add">+   &lt;%# O React se pendura aqui: o contador é um componente (components/Counter.tsx) %&gt;</div>
+      <div class="line add">+   &lt;div id="root"&gt;&lt;/div&gt;</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ &lt;/body&gt;</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ &lt;/html&gt;</div>
+    </div>
+
+    <div class="diff">
+      <div class="diff-head">src/resources/js/pages/counter.tsx</div>
+      <div class="line add">+ import { createRoot } from "react-dom/client"</div>
+      <div class="line add">+ import { Counter } from "../components/Counter"</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ // A View (resources/views/counter.ejs) entrega o #root; o contador é um componente.</div>
+      <div class="line add">+ createRoot(document.getElementById("root")!).render(&lt;Counter /&gt;)</div>
+    </div>
+
+    <div class="diff">
+      <div class="diff-head">src/routes/router.js</div>
+      <div class="line ctx">  import TasksViewController from '../app/Http/Controllers/Views/TasksViewController.js';</div>
+      <div class="line add">+ import CounterViewController from '../app/Http/Controllers/Views/CounterViewController.js';</div>
+      <div class="line ctx">  import LogoutController from '../app/Http/Controllers/Views/LogoutController.js';</div>
+      <div class="line ctx">  ...</div>
+      <div class="line ctx"></div>
+      <div class="line add">+ /** Contador em React: View pública, sem login e sem middleware (demonstração de estado) */</div>
+      <div class="line add">+ router.get('/contador', CounterViewController);</div>
+      <div class="line add">+ </div>
+      <div class="line ctx">  /** Login: se já tem sessão válida, o middleware redireciona antes do HTML existir */</div>
+    </div>
+
+    <div class="diff">
+      <div class="diff-head">src/vite.config.js (rollupOptions.input)</div>
+      <div class="line ctx">                  "./resources/js/pages/tasks.tsx",</div>
+      <div class="line rem">-                 "./resources/js/pages/users.tsx"</div>
+      <div class="line add">+                 "./resources/js/pages/users.tsx",</div>
+      <div class="line add">+                 "./resources/js/pages/counter.tsx"</div>
+      <div class="line ctx">              ],</div>
+    </div>
+
+    <div class="diff">
+      <div class="diff-head">docker/node24-vite-compiler/vite.config.js (rollupOptions.input)</div>
+      <div class="line ctx">                  "./resources/js/pages/tasks.tsx",</div>
+      <div class="line rem">-                 "./resources/js/pages/users.tsx"</div>
+      <div class="line add">+                 "./resources/js/pages/users.tsx",</div>
+      <div class="line add">+                 "./resources/js/pages/counter.tsx"</div>
+      <div class="line ctx">              ],</div>
+    </div>
+
+    <div class="why">
+      <div class="why-card">
+        <h4>Rota pública</h4>
+        <p><code class="inline">router.get('/contador', CounterViewController)</code> sem middleware: é a exceção de propósito, só para a demonstração. As telas das tasks e dos usuários continuam protegidas.</p>
+      </div>
+      <div class="why-card">
+        <h4>Um estado só</h4>
+        <p><code class="inline">count</code> com <code class="inline">useState(0)</code>; os três handlers (<code class="inline">handleIncrement</code>, <code class="inline">handleDecrement</code>, <code class="inline">handleReset</code>) usam a forma de função, menos o zerar.</p>
+      </div>
+    </div>
+
+    <div class="ok">
+      <strong><i class="fa-solid fa-circle-check"></i> Testado:</strong>
+      <p><code class="inline">npx tsc --noEmit</code> e <code class="inline">npx vite build</code> sem erro (<code class="inline">src/counter.&lt;hash&gt;.js</code> no manifest); a View foi renderizada isolada e traz <code class="inline">#root</code> e o script do contador. Rota não testada com servidor.</p>
     </div>
   </div>
 
