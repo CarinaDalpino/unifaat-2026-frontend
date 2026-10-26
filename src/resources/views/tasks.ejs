@@ -11,16 +11,11 @@
 
 <body class="d-flex flex-column min-vh-100 bg-light">
 
-  <header class="bg-primary text-white py-4 px-4 shadow-sm">
-    <h1 class="h3 m-0">Tasks de <%= user.name %></h1>
-  </header>
-
-  <main class="container flex-grow-1 py-5">
-    <%# O servidor entrega o id do usuário e as tasks já lidas do banco; o React monta o resto %>
-    <div id="root"
-         data-id-user="<%= user.id %>"
-         data-tasks="<%= JSON.stringify(tasks) %>"></div>
-  </main>
+  <%# O cabeçalho agora é um componente React (Header), dentro do #root; o servidor entrega o id, o nome e as tasks já lidas do banco %>
+  <div id="root" class="d-flex flex-column flex-grow-1"
+       data-id-user="<%= user.id %>"
+       data-user-name="<%= user.name %>"
+       data-tasks="<%= JSON.stringify(tasks) %>"></div>
 
   <footer class="bg-primary text-white text-center py-3 mt-auto">
     <div class="small">Frontend 2026.2</div>

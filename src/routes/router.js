@@ -26,6 +26,7 @@ import LoginViewController from '../app/Http/Controllers/Views/LoginViewControll
 import RedirectIfAuthenticatedMiddleware from '../app/Http/Middlewares/RedirectIfAuthenticatedMiddleware.js';
 import RedirectIfGuestMiddleware from '../app/Http/Middlewares/RedirectIfGuestMiddleware.js';
 import TasksViewController from '../app/Http/Controllers/Views/TasksViewController.js';
+import LogoutController from '../app/Http/Controllers/Views/LogoutController.js';
 
 const router = Router();
 
@@ -89,6 +90,9 @@ router.get('/hello', HelloWorldController);
 
 /** Login: se já tem sessão válida, o middleware redireciona antes do HTML existir */
 router.get('/login', RedirectIfAuthenticatedMiddleware, LoginViewController);
+
+/** Logout: o cookie auth_token é HttpOnly, só o servidor consegue apagá-lo */
+router.get('/logout', LogoutController);
 
 /** Tasks (React dentro da View): sem sessão válida, o middleware redireciona para /login antes do HTML existir */
 router.get('/tasks', RedirectIfGuestMiddleware, TasksViewController);

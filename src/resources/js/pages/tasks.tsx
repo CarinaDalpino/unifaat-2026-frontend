@@ -6,6 +6,7 @@ import { TaskApp } from "../components/TaskApp"
 // já lidas do banco nos data-* do #root; o React só monta o componente.
 const root = document.getElementById("root")!
 const idUser = Number(root.dataset.idUser)
+const userName = root.dataset.userName ?? ""
 const initialTasks: Task[] = JSON.parse(root.dataset.tasks ?? "[]")
 
-createRoot(root).render(<TaskApp idUser={idUser} initialTasks={initialTasks} />)
+createRoot(root).render(<TaskApp idUser={idUser} userName={userName} initialTasks={initialTasks} />)

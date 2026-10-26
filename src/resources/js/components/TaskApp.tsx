@@ -4,13 +4,15 @@ import { taskCreateApi } from "../api/taskCreateApi"
 import { taskUpdateApi } from "../api/taskUpdateApi"
 import { taskDeleteApi } from "../api/taskDeleteApi"
 import { TaskItem } from "./TaskItem"
+import { Header } from "./Header"
 
 type TaskAppProps = {
     idUser: number
+    userName: string
     initialTasks: Task[]
 }
 
-export function TaskApp({ idUser, initialTasks }: TaskAppProps) {
+export function TaskApp({ idUser, userName, initialTasks }: TaskAppProps) {
     const [tasks, setTasks] = useState<Task[]>(initialTasks)
     const [name, setName] = useState("")
 
@@ -41,23 +43,29 @@ export function TaskApp({ idUser, initialTasks }: TaskAppProps) {
     }
 
     return (
-        <section>
-            <div className="input-group mb-3">
-                <input
-                    className="form-control"
-                    value={name}
-                    onChange={event => setName(event.target.value)}
-                />
-                <button className="btn btn-primary" onClick={create}>Adicionar</button>
-            </div>
+        <>
+            <Header userName={userName} active="tasks" />
 
-            <p>{pending} pendente(s)</p>
+            <main className="container flex-grow-1 py-5">
+                <section>
+                    <div className="input-group mb-3">
+                        <input
+                            className="form-control"
+                            value={name}
+                            onChange={event => setName(event.target.value)}
+                        />
+                        <button className="btn btn-primary" onClick={create}>Adicionar</button>
+                    </div>
 
-            <ul className="list-group">
-                {tasks.map(task => (
-                    <TaskItem key={task.id} task={task} onToggle={toggle} onDelete={remove} />
-                ))}
-            </ul>
-        </section>
+                    <p>{pending} pendente(s)</p>
+
+                    <ul className="list-group">
+                        {tasks.map(task => (
+                            <TaskItem key={task.id} task={task} onToggle={toggle} onDelete={remove} />
+                        ))}
+                    </ul>
+                </section>
+            </main>
+        </>
     )
 }
