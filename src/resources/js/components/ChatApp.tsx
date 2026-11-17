@@ -30,7 +30,7 @@ export function ChatApp() {
 
     // Referências: o socket vive no heap (não renderiza) e o fim da lista é um elemento do HTML
     const socketRef = useRef<Socket | null>(null)
-    const endRef = useRef<HTMLDivElement>(null)
+    const listRef = useRef<HTMLDivElement>(null)
 
     // Efeito 1: depois de entrar na sala, abre o túnel; a limpeza fecha a conexão
     useEffect(() => {
@@ -69,9 +69,12 @@ export function ChatApp() {
         }
     }, [isJoined, name])
 
-    // Efeito 2: depois de a tela atualizar com a mensagem nova, rola até o fim
+    // Efeito 2: depois de a tela atualizar com a mensagem nova, rola só a caixa do chat até o fim
+    // (scrollIntoView rolaria a janela inteira, por isso rolamos o próprio container)
     useEffect(() => {
-        endRef.current?.scrollIntoView({ behavior: "smooth" })
+        const list = listRef.current
+        if (!list) return
+        list.scrollTo({ top: list.scrollHeight, behavior: "smooth" })
     }, [feed])
 
     // Entrar: guarda o nome e liga o efeito do túnel
@@ -144,7 +147,7 @@ export function ChatApp() {
                 <span className={`badge ${statusClass}`}>{statusLabel}</span>
             </div>
 
-            <div className="card-body" style={{ height: "55vh", overflowY: "auto" }}>
+            <div ref={listRef} className="card-body" style={{ height: "55vh", overflowY: "auto" }}>
                 {feed.length === 0 && <p className="text-muted">Nenhuma mensagem ainda. Escreva a primeira.</p>}
 
                 {feed.map(item => {
@@ -176,7 +179,6 @@ export function ChatApp() {
                     )
                 })}
 
-                <div ref={endRef} />
             </div>
 
             <div className="card-footer d-flex gap-2 pb-0 border-top-0">

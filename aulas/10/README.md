@@ -245,7 +245,7 @@ termina no Pull Request: **não há formulário**.
 - ❌ Não commitar no `main`, nem fazer merge do PR
 - ❌ Nome da branch fora do formato `RA-tf-10` = TF com nota ZERO
 
-**Prazo:** a definir.
+**Prazo:** 24/11/2026.
 
 ## Dúvidas?
 
