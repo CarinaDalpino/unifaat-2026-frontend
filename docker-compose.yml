@@ -16,6 +16,7 @@ services:
       - postgres-container
       - elasticsearch-container
       - rabbitmq-container
+      - redis-container
     environment:
       POSTGRES_HOST: postgres_host
       POSTGRES_PORT: 5432
@@ -23,11 +24,16 @@ services:
       ELASTIC_PORT: 9200
       RABBITMQ_HOST: rabbitmq_host
       RABBITMQ_PORT: 5672
+      REDIS_HOST: redis_host
+      REDIS_PORT: 6379
     restart: unless-stopped
     networks:
-      app-network:
+      edge-network:   # o nginx chega por aqui
         aliases:
-            - nodeweb_host
+          - nodeweb_host
+      data-network:   # e daqui alcança os dados: a ponte entre as duas redes
+        aliases:
+          - nodeweb_host
 
   #NODE COMMAND
   nodecommand-container:
@@ -44,6 +50,7 @@ services:
       - postgres-container
       - elasticsearch-container
       - rabbitmq-container
+      - redis-container
     environment:
       POSTGRES_HOST: postgres_host
       POSTGRES_PORT: 5432
@@ -51,8 +58,10 @@ services:
       ELASTIC_PORT: 9200
       RABBITMQ_HOST: rabbitmq_host
       RABBITMQ_PORT: 5672
+      REDIS_HOST: redis_host
+      REDIS_PORT: 6379
     networks:
-      app-network:
+      data-network:
         aliases:
             - nodecommand_host
 
@@ -71,6 +80,7 @@ services:
       - postgres-container
       - rabbitmq-container
       - elasticsearch-container
+      - redis-container
     environment:
       POSTGRES_HOST: postgres_host
       POSTGRES_PORT: 5432
@@ -78,11 +88,43 @@ services:
       ELASTIC_PORT: 9200
       RABBITMQ_HOST: rabbitmq_host
       RABBITMQ_PORT: 5672
+      REDIS_HOST: redis_host
+      REDIS_PORT: 6379
     restart: unless-stopped
     networks:
-      app-network:
+      data-network:
         aliases:
           - nodeworker_host
+
+  #NODE WORKER (fila save-message): mesma imagem, outra fila; grava as mensagens do chat no Postgres
+  nodeworkersavemessage-container:
+    build:
+      context: .
+      dockerfile: docker/node-worker/Dockerfile
+    # Argumentos do entrypoint (nodemon _worker.js): a fila que este worker consome
+    command: ["--queue", "save-message"]
+    env_file:
+      - .env
+      - .env.docker
+    volumes:
+      - ./src:/app
+      - nodemodules-volume:/app/node_modules
+    depends_on:
+      - postgres-container
+      - rabbitmq-container
+      - redis-container
+    environment:
+      POSTGRES_HOST: postgres_host
+      POSTGRES_PORT: 5432
+      RABBITMQ_HOST: rabbitmq_host
+      RABBITMQ_PORT: 5672
+      REDIS_HOST: redis_host
+      REDIS_PORT: 6379
+    restart: unless-stopped
+    networks:
+      data-network:
+        aliases:
+          - nodeworkersavemessage_host
 
   #NODE WEBSOCKET
   nodewebsocket-container:
@@ -104,7 +146,10 @@ services:
       RABBITMQ_PORT: 5672
     restart: unless-stopped
     networks:
-      app-network:
+      edge-network:   # o nginx chega por aqui
+        aliases:
+          - nodewebsocket_host
+      data-network:   # e daqui alcança os dados: a ponte entre as duas redes
         aliases:
           - nodewebsocket_host
 
@@ -122,7 +167,7 @@ services:
     ports:
       - "5172:5172"
     networks:
-      - app-network
+      - edge-network   # só a borda: não enxerga o banco
 
   #NODE VITE COMPILER
   nodevitecompiler-container:
@@ -137,7 +182,7 @@ services:
     environment:
       - IS_CONTAINER=TRUE
     networks:
-      - app-network
+      - edge-network   # só a borda: não enxerga o banco
 
   #NGINX
   nginx-container:
@@ -156,7 +201,7 @@ services:
       - nodeweb-container
       - nodewebsocket-container
     networks:
-      - app-network
+      - edge-network   # só a borda: não enxerga o banco
 
   #POSTGRES
   postgres-container:
@@ -175,7 +220,7 @@ services:
       - postgres-volume:/var/lib/postgresql
       - ./src/docker/postgres/init:/docker-entrypoint-initdb.d
     networks:
-      app-network:
+      data-network:
         aliases:
           - postgres_host
 
@@ -187,11 +232,11 @@ services:
       - discovery.type=single-node # Um nó só, sem cluster
       - xpack.security.enabled=false # Sem usuário/senha/HTTPS: só porque NÃO tem porta exposta
       - ES_JAVA_OPTS=-Xms512m -Xmx512m # Limita a memória da JVM
-    # Sem "ports": só a rede interna (app-network) alcança o Elasticsearch
+    # Sem "ports": só a rede interna (data-network) alcança o Elasticsearch
     volumes:
       - elastic-volume:/usr/share/elasticsearch/data
     networks:
-      app-network:
+      data-network:
         aliases:
           - elasticsearch_host
 
@@ -208,12 +253,70 @@ services:
     volumes:
       - rabbitmq-volume:/var/lib/rabbitmq
     networks:
-      app-network:
+      data-network:
         aliases:
           - rabbitmq_host
 
+  #REDIS (cache): sem "ports", só a rede interna alcança; sem volume, cache se perde e se refaz
+  redis-container:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    networks:
+      data-network:
+        aliases:
+          - redis_host
+
+  #PROMETHEUS (coleta e guarda as métricas): busca o /metrics do nodeweb a cada 5 s (pull) pela data-network
+  prometheus-container:
+    image: prom/prometheus:v3.5.0
+    restart: unless-stopped
+    depends_on:
+      - nodeweb-container
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"   # a interface do Prometheus (Status > Targets mostra o nodeweb)
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-volume:/prometheus
+    networks:
+      data-network:
+        aliases:
+          - prometheus_host
+
+  #GRAFANA (só mostra): consulta o Prometheus (métricas) e o Postgres (as mensagens do chat). Nas DUAS redes
+  grafana-container:
+    image: grafana/grafana:12.1.0
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      # O datasource do Postgres lê estas variáveis (provisioning interpola $VAR)
+      POSTGRES_HOST: postgres_host
+      POSTGRES_PORT: 5432
+    depends_on:
+      - prometheus-container
+      - postgres-container
+    ports:
+      - "${GRAFANA_PORT:-3002}:3000"
+    volumes:
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning
+      - grafana-volume:/var/lib/grafana
+    networks:
+      edge-network:
+        aliases:
+          - grafana_host
+      data-network:
+        aliases:
+          - grafana_host
+
 networks:
-  app-network:
+  # Borda: o que fala com o navegador (nginx, Vite) e a ponte (nodeweb, nodewebsocket)
+  edge-network:
+    driver: bridge
+  # Dados: bancos, cache, fila, workers e comandos; sem porta publicada, só quem está aqui alcança
+  data-network:
     driver: bridge
 
 volumes:
@@ -222,3 +325,5 @@ volumes:
   postgres-volume:
   elastic-volume:
   rabbitmq-volume:
+  prometheus-volume:
+  grafana-volume:

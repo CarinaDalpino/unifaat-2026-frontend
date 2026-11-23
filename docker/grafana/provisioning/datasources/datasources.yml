@@ -1,0 +1,24 @@
+# Fontes de dados do Grafana, criadas na subida (sem clicar em nada).
+# Prometheus: as métricas (req/s, p95, cache). Postgres: as mensagens do chat gravadas pelo job save-message.
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    uid: prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus_host:9090
+    isDefault: true
+
+  - name: Postgres
+    uid: postgres
+    type: grafana-postgresql-datasource
+    access: proxy
+    url: postgres_host:5432
+    user: $POSTGRES_USER
+    jsonData:
+      database: $POSTGRES_DB
+      sslmode: disable
+      postgresVersion: 1800
+    secureJsonData:
+      password: $POSTGRES_PASSWORD

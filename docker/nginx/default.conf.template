@@ -14,6 +14,11 @@ server {
 
     client_max_body_size 100M; # Tamanho máximo permitido do corpo da requisição
 
+    # /metrics é do Prometheus: de fora (pelo nginx) devolve 404; o Prometheus coleta direto no nodeweb, pela data-network
+    location = /metrics {
+        return 404;
+    }
+
     location / {
         autoindex on; # Mostra índice de arquivos se não encontrar o index
         try_files $uri.html $uri $uri/ @node; # Procura o arquivo estático => procura o diretório estático => senao vai para o bloco @node

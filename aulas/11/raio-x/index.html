@@ -1,0 +1,1981 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Raio-X do Código — Aula 11</title>
+<link rel="stylesheet" href="../../../assets/raio-x.css">
+<script src="../../../assets/tema.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+<style>
+  .toc{ background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 18px 22px; margin: 0 0 40px; }
+  .toc h2{ margin: 0 0 12px; font-size: 1.15rem; }
+  .toc-grid{ display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px 28px; }
+  .toc-group h3{ margin: 0 0 6px; font-size: .8rem; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); font-family: var(--font-mono); }
+  .toc-group ol{ margin: 0; padding-left: 28px; }
+  .toc-group li{ margin: 3px 0; line-height: 1.3; }
+  .toc-group a{ color: var(--ink); text-decoration: none; }
+  .toc-group a:hover{ text-decoration: underline; }
+  .entry.destaque{ background: var(--bg-raised); border: 3px solid var(--accent); border-radius: 12px; padding: 18px 22px 22px 22px; }
+  .entry.destaque h2::before{ content: "★ "; color: var(--accent); }
+</style>
+</head>
+<body>
+
+<nav class="topbar"><a class="back" href="../../../index.html">← Voltar</a></nav>
+
+<header>
+  <span class="kicker">Raio-X do Código · Aula 11 · Timeline</span>
+  <h1>Cache e Observabilidade</h1>
+  <p class="meta">
+    <span><i class="fa-solid fa-folder"></i> src/ · docker/ · assets/</span>
+    <span><i class="fa-solid fa-calendar-days"></i> 23/11/2026</span>
+    <span><i class="fa-solid fa-wrench"></i> 11 etapas</span>
+  </p>
+</header>
+
+<main>
+    <div class="callout">
+      <span class="icon"><i class="fa-solid fa-circle-info"></i></span>
+      <div>
+        <strong>O que está aplicado e o que não foi testado</strong>
+        <p>As etapas 1 a 11 estão <strong>aplicadas em src/, docker/ e no diagrama</strong>, conferidas apenas com <code class="inline">node --check</code> e <code class="inline">tsc --noEmit</code>. <strong>O Docker não foi subido</strong>: faltam rodar a migration, recriar o <code class="inline">nodemodules-volume</code> (dependências <code class="inline">redis</code> e <code class="inline">prom-client</code>), subir com <code class="inline">--build</code> e definir o <code class="inline">ADMIN_TOKEN</code> no <code class="inline">.env</code>.</p>
+      </div>
+    </div>
+<section class="toc">
+  <h2>Índice</h2>
+  <div class="toc-grid">
+    <div class="toc-group"><h3>Banco</h3><ol>
+      <li value="1"><a href="#etapa-1">Migration: a tabela messages (ip, name, message, date)</a></li>
+    </ol></div>
+    <div class="toc-group"><h3>Fila save-message</h3><ol>
+      <li value="2"><a href="#etapa-2">Job SaveMessageJob e o dispatch no Event do chat</a></li>
+    </ol></div>
+    <div class="toc-group"><h3>Docker</h3><ol>
+      <li value="3"><a href="#etapa-3">Containers novos: redis e o worker da fila save-message</a></li>
+    </ol></div>
+    <div class="toc-group"><h3>Redis</h3><ol>
+      <li value="4"><a href="#etapa-4">Conexão com o Redis e a dependência redis</a></li>
+    </ol></div>
+    <div class="toc-group"><h3>Cache</h3><ol>
+      <li value="5"><a href="#etapa-5">O ranking do chat com cache-aside, e o interruptor do professor</a></li>
+    </ol></div>
+    <div class="toc-group"><h3>React: o chat</h3><ol>
+      <li value="6"><a href="#etapa-6">O botão que manda requisições (LoadButton) dentro do chat</a></li>
+    </ol></div>
+    <div class="toc-group"><h3>Documentação</h3><ol>
+      <li value="7"><a href="#etapa-7">O diagrama da rede Docker: duas redes, Redis, Prometheus e Grafana</a></li>
+    </ol></div>
+    <div class="toc-group"><h3>Docker</h3><ol>
+      <li value="8"><a href="#etapa-8">Dois networks: edge-network (borda) e data-network (dados)</a></li>
+    </ol></div>
+    <div class="toc-group"><h3>Observabilidade</h3><ol>
+      <li value="9"><a href="#etapa-9">Métricas no nodeweb: prom-client, histograma, /metrics e o bloqueio no nginx</a></li>
+      <li value="10"><a href="#etapa-10">Containers prometheus e grafana, com dashboard e log das mensagens</a></li>
+    </ol></div>
+    <div class="toc-group"><h3>Timeline</h3><ol>
+      <li value="11"><a href="#etapa-11">O botão do raio-x na timeline</a></li>
+    </ol></div>
+  </div>
+</section>
+
+<div class="timeline">
+
+  <!-- ETAPA 1 -->
+  <div class="entry" id="etapa-1">
+    <div class="entry-dot">1</div>
+    <div class="entry-date">Etapa 1 · Banco</div>
+    <h2>Migration: a tabela messages (ip, name, message, date)</h2>
+    <p class="sub">As mensagens do chat passam a ser gravadas. A tabela guarda quem mandou (ip e name), o texto (message) e quando (date), com o Model para o job usar.</p>
+
+    <div class="diff">
+      <div class="diff-head">src/database/migrations/004_create_messages_table.js</div>
+      <div class="line add">+ // Mensagens do chat: quem mandou (ip e name), o texto (message) e quando (date).</div>
+      <div class="line add">+ // Quem grava é o job SaveMessageJob, na fila save-message, e não o websocket.</div>
+      <div class="line add">+ export async function up(db) {</div>
+      <div class="line add">+   await db.query(`</div>
+      <div class="line add">+     CREATE TABLE messages (</div>
+      <div class="line add">+       id SERIAL PRIMARY KEY,</div>
+      <div class="line add">+       ip VARCHAR(45) NOT NULL,</div>
+      <div class="line add">+       name VARCHAR(255) NOT NULL,</div>
+      <div class="line add">+       message TEXT NOT NULL,</div>
+      <div class="line add">+       date TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP</div>
+      <div class="line add">+     )</div>
+      <div class="line add">+   `)</div>
+      <div class="line add">+ }</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ export async function down(db) {</div>
+      <div class="line add">+   await db.query(`</div>
+      <div class="line add">+     DROP TABLE messages</div>
+      <div class="line add">+   `)</div>
+      <div class="line add">+ }</div>
+    </div>
+
+    <div class="diff">
+      <div class="diff-head">src/app/Models/MessageModel.js</div>
+      <div class="line add">+ import { DataTypes } from 'sequelize'</div>
+      <div class="line add">+ import sequelize from '../../database/connections/sequelize.js'</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ const MessageModel = sequelize.define(</div>
+      <div class="line add">+     'MessageModel',</div>
+      <div class="line add">+     {</div>
+      <div class="line add">+         id: {</div>
+      <div class="line add">+             type: DataTypes.INTEGER,</div>
+      <div class="line add">+             primaryKey: true,</div>
+      <div class="line add">+             autoIncrement: true</div>
+      <div class="line add">+         },</div>
+      <div class="line add">+ </div>
+      <div class="line add">+         ip: {</div>
+      <div class="line add">+             type: DataTypes.STRING(45),</div>
+      <div class="line add">+             allowNull: false</div>
+      <div class="line add">+         },</div>
+      <div class="line add">+ </div>
+      <div class="line add">+         name: {</div>
+      <div class="line add">+             type: DataTypes.STRING,</div>
+      <div class="line add">+             allowNull: false</div>
+      <div class="line add">+         },</div>
+      <div class="line add">+ </div>
+      <div class="line add">+         message: {</div>
+      <div class="line add">+             type: DataTypes.TEXT,</div>
+      <div class="line add">+             allowNull: false</div>
+      <div class="line add">+         },</div>
+      <div class="line add">+ </div>
+      <div class="line add">+         date: {</div>
+      <div class="line add">+             type: DataTypes.DATE,</div>
+      <div class="line add">+             allowNull: false,</div>
+      <div class="line add">+             defaultValue: DataTypes.NOW</div>
+      <div class="line add">+         }</div>
+      <div class="line add">+     },</div>
+      <div class="line add">+     {</div>
+      <div class="line add">+         tableName: 'messages',</div>
+      <div class="line add">+         timestamps: false</div>
+      <div class="line add">+     }</div>
+      <div class="line add">+ )</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ export default MessageModel</div>
+    </div>
+
+    <div class="why">
+      <div class="why-card">
+        <h4>Um arquivo por mudança</h4>
+        <p>Mais uma migration numerada (<code class="inline">004</code>): o <code class="inline">migrate</code> roda só as pendentes e o <code class="inline">down</code> desfaz.</p>
+      </div>
+      <div class="why-card">
+        <h4>IP junto da mensagem</h4>
+        <p><code class="inline">VARCHAR(45)</code> cabe um IPv6 inteiro; o IP vem do <code class="inline">ipOf</code> do websocket (o mesmo da lista de online).</p>
+      </div>
+      <div class="why-card">
+        <h4>Sem timestamps do Sequelize</h4>
+        <p>A tabela tem só a coluna <code class="inline">date</code> (o momento em que a mensagem foi enviada), então o Model usa <code class="inline">timestamps: false</code>.</p>
+      </div>
+    </div>
+
+    <div class="ok">
+      <strong><i class="fa-solid fa-circle-check"></i> Conferido:</strong>
+      <p><code class="inline">node --check</code> sem erro. A migration NÃO foi executada (falta <code class="inline">docker compose run --rm nodecommand-container migrate</code>).</p>
+    </div>
+  </div>
+
+  <!-- ETAPA 2 -->
+  <div class="entry" id="etapa-2">
+    <div class="entry-dot">2</div>
+    <div class="entry-date">Etapa 2 · Fila save-message</div>
+    <h2>Job SaveMessageJob e o dispatch no Event do chat</h2>
+    <p class="sub">O websocket só distribui: depois de notificar, entrega o job à fila save-message e segue. Quem grava no Postgres é um worker.</p>
+
+    <div class="diff">
+      <div class="diff-head">src/app/Jobs/SaveMessageJob.js</div>
+      <div class="line add">+ import { createJob } from '../../utils/job.js'</div>
+      <div class="line add">+ import MessageModel from '../Models/MessageModel.js'</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ /**</div>
+      <div class="line add">+  * Fila save-message. Disparado pelo Event chat:message do websocket: o websocket só distribui a mensagem</div>
+      <div class="line add">+  * e entrega este job a um worker, que grava no Postgres (ip, name, message, date) fora do túnel.</div>
+      <div class="line add">+  */</div>
+      <div class="line add">+ export default createJob({</div>
+      <div class="line add">+     name: 'SaveMessageJob',</div>
+      <div class="line add">+     handle: async (payload) =&gt; {</div>
+      <div class="line add">+         const { ip, name, message, sentAt } = payload</div>
+      <div class="line add">+ </div>
+      <div class="line add">+         await MessageModel.create({ ip, name, message, date: new Date(sentAt) })</div>
+      <div class="line add">+ </div>
+      <div class="line add">+         console.log(`Mensagem de ${name} (${ip}) salva no Postgres`)</div>
+      <div class="line add">+     }</div>
+      <div class="line add">+ })</div>
+    </div>
+
+    <div class="diff">
+      <div class="diff-head">src/app/Events/Chat/ChatMessageEvent.js</div>
+      <div class="line ctx">  import { createEvent } from '../../../utils/event.js'</div>
+      <div class="line add">+ import { ipOf } from '../../../utils/presence.js'</div>
+      <div class="line add">+ import SaveMessageJob from '../../Jobs/SaveMessageJob.js'</div>
+      <div class="line ctx"></div>
+      <div class="line ctx">  /**</div>
+      <div class="line ctx">  ...</div>
+      <div class="line ctx">   * O Event NÃO entrega nada na tela: só publica no exchange; cada servidor websocket recebe a cópia</div>
+      <div class="line ctx">   * na sua fila dinâmica e faz o io.emit para os clients dele (inclusive o autor).</div>
+      <div class="line add">+  * Depois, dispara o job SaveMessageJob na fila save-message: quem grava no Postgres é um worker.</div>
+      <div class="line ctx">   */</div>
+      <div class="line ctx">  export default createEvent({</div>
+      <div class="line ctx">  ...</div>
+      <div class="line ctx"></div>
+      <div class="line ctx">          const name = String(payload?.name ?? '').trim() || 'anônimo'</div>
+      <div class="line add">+         const message = text.slice(0, 500)</div>
+      <div class="line add">+         const sentAt = Date.now()</div>
+      <div class="line ctx"></div>
+      <div class="line rem">-         await context.notify('chat:message', { name, text: text.slice(0, 500), sentAt: Date.now() })</div>
+      <div class="line add">+         await context.notify('chat:message', { name, text: message, sentAt })</div>
+      <div class="line add">+ </div>
+      <div class="line add">+         // Gravar no banco não é trabalho do websocket: entrega o job à fila save-message e segue</div>
+      <div class="line add">+         await SaveMessageJob.dispatch('save-message', { ip: ipOf(context.socket), name, message, sentAt })</div>
+      <div class="line ctx">      }</div>
+      <div class="line ctx">  })</div>
+    </div>
+
+    <div class="diff">
+      <div class="diff-head">src/utils/job.js</div>
+      <div class="line ctx">              throw new Error('dispatch requer o nome do job como string.')</div>
+      <div class="line ctx">          }</div>
+      <div class="line ctx"></div>
+      <div class="line add">+         // Fecha só a conexão que o próprio dispatch abriu: no websocket a conexão já está aberta</div>
+      <div class="line add">+         // (assina o exchange) e fechá-la derrubaria o chat inteiro</div>
+      <div class="line add">+         const wasConnected = rabbit.isConnected()</div>
+      <div class="line add">+ </div>
+      <div class="line ctx">          await rabbit.connect()</div>
+      <div class="line ctx"></div>
+      <div class="line ctx">          try {</div>
+      <div class="line ctx">              return await rabbit.publish(queue, { job: name, payload }, options)</div>
+      <div class="line ctx">          } finally {</div>
+      <div class="line rem">-             await rabbit.close()</div>
+      <div class="line add">+             if (!wasConnected) {</div>
+      <div class="line add">+                 await rabbit.close()</div>
+      <div class="line add">+             }</div>
+      <div class="line ctx">          }</div>
+      <div class="line ctx">      }</div>
+      <div class="line ctx"></div>
+    </div>
+
+    <div class="why">
+      <div class="why-card">
+        <h4>Websocket leve</h4>
+        <p>O Event não grava nada: o <code class="inline">dispatch</code> só publica um recado na fila <code class="inline">save-message</code> (milissegundos) e o chat continua.</p>
+      </div>
+      <div class="why-card">
+        <h4>Payload pequeno</h4>
+        <p>O job leva <code class="inline">ip</code>, <code class="inline">name</code>, <code class="inline">message</code> e <code class="inline">sentAt</code>; o worker é que fala com o banco.</p>
+      </div>
+      <div class="why-card">
+        <h4>Pegadinha do dispatch</h4>
+        <p>O <code class="inline">dispatch</code> fechava a conexão do RabbitMQ ao terminar, o que serve ao controller (processo curto), mas no websocket (que mantém a conexão aberta para assinar o exchange) derrubaria o chat inteiro. Agora ele só fecha a conexão que ele mesmo abriu (<code class="inline">rabbit.isConnected()</code>).</p>
+      </div>
+      <div class="why-card">
+        <h4>Mesma regra da Aula 10</h4>
+        <p>O websocket só conecta e distribui; o que persiste ou pesa vai para um worker pelo mesmo RabbitMQ.</p>
+      </div>
+    </div>
+
+    <div class="ok">
+      <strong><i class="fa-solid fa-circle-check"></i> Conferido:</strong>
+      <p><code class="inline">node --check</code> sem erro. Fila e worker NÃO foram exercitados (Docker não subiu).</p>
+    </div>
+  </div>
+
+  <!-- ETAPA 3 -->
+  <div class="entry" id="etapa-3">
+    <div class="entry-dot">3</div>
+    <div class="entry-date">Etapa 3 · Docker</div>
+    <h2>Containers novos: redis e o worker da fila save-message</h2>
+    <p class="sub">O Redis entra na app-network sem porta e sem volume (cache se perde e se refaz). Um segundo worker, da mesma imagem, consome só a fila save-message.</p>
+
+    <div class="diff">
+      <div class="diff-head">docker-compose.yml</div>
+      <div class="line ctx">        - elasticsearch-container</div>
+      <div class="line ctx">        - rabbitmq-container</div>
+      <div class="line add">+       - redis-container</div>
+      <div class="line ctx">      environment:</div>
+      <div class="line ctx">        POSTGRES_HOST: postgres_host</div>
+      <div class="line ctx">  ...</div>
+      <div class="line ctx">        RABBITMQ_HOST: rabbitmq_host</div>
+      <div class="line ctx">        RABBITMQ_PORT: 5672</div>
+      <div class="line add">+       REDIS_HOST: redis_host</div>
+      <div class="line add">+       REDIS_PORT: 6379</div>
+      <div class="line ctx">      restart: unless-stopped</div>
+      <div class="line ctx">      networks:</div>
+      <div class="line ctx">  ...</div>
+      <div class="line ctx">        - elasticsearch-container</div>
+      <div class="line ctx">        - rabbitmq-container</div>
+      <div class="line add">+       - redis-container</div>
+      <div class="line ctx">      environment:</div>
+      <div class="line ctx">        POSTGRES_HOST: postgres_host</div>
+      <div class="line ctx">  ...</div>
+      <div class="line ctx">        RABBITMQ_HOST: rabbitmq_host</div>
+      <div class="line ctx">        RABBITMQ_PORT: 5672</div>
+      <div class="line add">+       REDIS_HOST: redis_host</div>
+      <div class="line add">+       REDIS_PORT: 6379</div>
+      <div class="line ctx">      networks:</div>
+      <div class="line ctx">        app-network:</div>
+      <div class="line ctx">  ...</div>
+      <div class="line ctx">        - rabbitmq-container</div>
+      <div class="line ctx">        - elasticsearch-container</div>
+      <div class="line add">+       - redis-container</div>
+      <div class="line ctx">      environment:</div>
+      <div class="line ctx">        POSTGRES_HOST: postgres_host</div>
+      <div class="line ctx">  ...</div>
+      <div class="line ctx">        RABBITMQ_HOST: rabbitmq_host</div>
+      <div class="line ctx">        RABBITMQ_PORT: 5672</div>
+      <div class="line add">+       REDIS_HOST: redis_host</div>
+      <div class="line add">+       REDIS_PORT: 6379</div>
+      <div class="line ctx">      restart: unless-stopped</div>
+      <div class="line ctx">      networks:</div>
+      <div class="line ctx">  ...</div>
+      <div class="line ctx">          aliases:</div>
+      <div class="line ctx">            - nodeworker_host</div>
+      <div class="line add">+ </div>
+      <div class="line add">+   #NODE WORKER (fila save-message): mesma imagem, outra fila; grava as mensagens do chat no Postgres</div>
+      <div class="line add">+   nodeworkersavemessage-container:</div>
+      <div class="line add">+     build:</div>
+      <div class="line add">+       context: .</div>
+      <div class="line add">+       dockerfile: docker/node-worker/Dockerfile</div>
+      <div class="line add">+     # Argumentos do entrypoint (nodemon _worker.js): a fila que este worker consome</div>
+      <div class="line add">+     command: ["--queue", "save-message"]</div>
+      <div class="line add">+     env_file:</div>
+      <div class="line add">+       - .env</div>
+      <div class="line add">+       - .env.docker</div>
+      <div class="line add">+     volumes:</div>
+      <div class="line add">+       - ./src:/app</div>
+      <div class="line add">+       - nodemodules-volume:/app/node_modules</div>
+      <div class="line add">+     depends_on:</div>
+      <div class="line add">+       - postgres-container</div>
+      <div class="line add">+       - rabbitmq-container</div>
+      <div class="line add">+       - redis-container</div>
+      <div class="line add">+     environment:</div>
+      <div class="line add">+       POSTGRES_HOST: postgres_host</div>
+      <div class="line add">+       POSTGRES_PORT: 5432</div>
+      <div class="line add">+       RABBITMQ_HOST: rabbitmq_host</div>
+      <div class="line add">+       RABBITMQ_PORT: 5672</div>
+      <div class="line add">+       REDIS_HOST: redis_host</div>
+      <div class="line add">+       REDIS_PORT: 6379</div>
+      <div class="line add">+     restart: unless-stopped</div>
+      <div class="line add">+     networks:</div>
+      <div class="line add">+       app-network:</div>
+      <div class="line add">+         aliases:</div>
+      <div class="line add">+           - nodeworkersavemessage_host</div>
+      <div class="line ctx"></div>
+      <div class="line ctx">    #NODE WEBSOCKET</div>
+      <div class="line ctx">  ...</div>
+      <div class="line ctx">          aliases:</div>
+      <div class="line ctx">            - rabbitmq_host</div>
+      <div class="line add">+ </div>
+      <div class="line add">+   #REDIS (cache): sem "ports", só a rede interna alcança; sem volume, cache se perde e se refaz</div>
+      <div class="line add">+   redis-container:</div>
+      <div class="line add">+     image: redis:7.4-alpine</div>
+      <div class="line add">+     restart: unless-stopped</div>
+      <div class="line add">+     networks:</div>
+      <div class="line add">+       app-network:</div>
+      <div class="line add">+         aliases:</div>
+      <div class="line add">+           - redis_host</div>
+      <div class="line ctx"></div>
+      <div class="line ctx">  networks:</div>
+    </div>
+
+    <div class="why">
+      <div class="why-card">
+        <h4>Redis sem ports</h4>
+        <p>Igual ao Elasticsearch: nenhum <code class="inline">ports:</code>, só quem está na rede alcança (<code class="inline">redis_host:6379</code>).</p>
+      </div>
+      <div class="why-card">
+        <h4>Mesma imagem, outra fila</h4>
+        <p>O <code class="inline">command</code> entrega <code class="inline">--queue save-message</code> ao <code class="inline">nodemon _worker.js</code>; o worker de antes continua na fila <code class="inline">default</code>.</p>
+      </div>
+      <div class="why-card">
+        <h4>Quem fala com o Redis</h4>
+        <p><code class="inline">nodeweb</code>, <code class="inline">nodecommand</code> e os dois workers recebem <code class="inline">REDIS_HOST</code> e <code class="inline">REDIS_PORT</code> no <code class="inline">environment</code> e o <code class="inline">depends_on</code> do redis-container.</p>
+      </div>
+    </div>
+
+    <div class="ok">
+      <strong><i class="fa-solid fa-circle-check"></i> Conferido:</strong>
+      <p>YAML do compose válido (lido com PyYAML). <code class="inline">docker compose up</code> NÃO foi executado.</p>
+    </div>
+  </div>
+
+  <!-- ETAPA 4 -->
+  <div class="entry" id="etapa-4">
+    <div class="entry-dot">4</div>
+    <div class="entry-date">Etapa 4 · Redis</div>
+    <h2>Conexão com o Redis e a dependência redis</h2>
+    <p class="sub">Mesmo molde do rabbit.js: um módulo em database/connections que conecta no primeiro uso, com get, set (com TTL) e del.</p>
+
+    <div class="diff">
+      <div class="diff-head">src/database/connections/redis.js</div>
+      <div class="line add">+ import { configDotenv } from 'dotenv'</div>
+      <div class="line add">+ import { createClient } from 'redis'</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ export default (() =&gt; {</div>
+      <div class="line add">+     configDotenv({</div>
+      <div class="line add">+         quiet: true</div>
+      <div class="line add">+     })</div>
+      <div class="line add">+ </div>
+      <div class="line add">+     const isDocker = process.env.IS_DOCKER === 'true'</div>
+      <div class="line add">+     const redisHost = process.env.REDIS_HOST || (isDocker ? 'redis_host' : 'localhost')</div>
+      <div class="line add">+     const redisPort = process.env.REDIS_PORT || '6379'</div>
+      <div class="line add">+ </div>
+      <div class="line add">+     const client = createClient({</div>
+      <div class="line add">+         url: `redis://${redisHost}:${redisPort}`</div>
+      <div class="line add">+     })</div>
+      <div class="line add">+ </div>
+      <div class="line add">+     client.on('error', (error) =&gt; {</div>
+      <div class="line add">+         console.error('Redis:', error.message)</div>
+      <div class="line add">+     })</div>
+      <div class="line add">+ </div>
+      <div class="line add">+     // Conecta só no primeiro uso (importar o módulo não derruba o processo se o Redis estiver fora).</div>
+      <div class="line add">+     // Uma conexão por processo: quem chegar depois reaproveita a mesma promessa; se falhar, tenta de novo.</div>
+      <div class="line add">+     let connecting = null</div>
+      <div class="line add">+ </div>
+      <div class="line add">+     const connect = () =&gt; {</div>
+      <div class="line add">+         connecting = connecting ?? client.connect().catch((error) =&gt; {</div>
+      <div class="line add">+             connecting = null</div>
+      <div class="line add">+             throw error</div>
+      <div class="line add">+         })</div>
+      <div class="line add">+ </div>
+      <div class="line add">+         return connecting</div>
+      <div class="line add">+     }</div>
+      <div class="line add">+ </div>
+      <div class="line add">+     const get = async (key) =&gt; {</div>
+      <div class="line add">+         await connect()</div>
+      <div class="line add">+         return client.get(key)</div>
+      <div class="line add">+     }</div>
+      <div class="line add">+ </div>
+      <div class="line add">+     // ttlSeconds: a chave expira sozinha (o TTL do cache)</div>
+      <div class="line add">+     const set = async (key, value, ttlSeconds) =&gt; {</div>
+      <div class="line add">+         await connect()</div>
+      <div class="line add">+         return client.set(key, value, { expiration: { type: 'EX', value: ttlSeconds } })</div>
+      <div class="line add">+     }</div>
+      <div class="line add">+ </div>
+      <div class="line add">+     const del = async (key) =&gt; {</div>
+      <div class="line add">+         await connect()</div>
+      <div class="line add">+         return client.del(key)</div>
+      <div class="line add">+     }</div>
+      <div class="line add">+ </div>
+      <div class="line add">+     return { get, set, del }</div>
+      <div class="line add">+ })()</div>
+    </div>
+
+    <div class="diff">
+      <div class="diff-head">src/package.json</div>
+      <div class="line ctx">      "pg": "^8.20.0",</div>
+      <div class="line add">+     "prom-client": "^15.1.3",</div>
+      <div class="line ctx">      "react": "^19.3.1",</div>
+      <div class="line ctx">      "react-dom": "^19.3.1",</div>
+      <div class="line add">+     "redis": "^6.3.1",</div>
+      <div class="line ctx">      "sequelize": "^6.37.8",</div>
+    </div>
+
+    <div class="diff">
+      <div class="diff-head">src/package-lock.json</div>
+      <div class="line add">+         "prom-client": "^15.1.3",</div>
+      <div class="line ctx">  ...</div>
+      <div class="line add">+         "redis": "^6.3.1",</div>
+      <div class="line ctx">  ...</div>
+      <div class="line add">+     "node_modules/@opentelemetry/api": {</div>
+      <div class="line add">+       "version": "1.10.0",</div>
+      <div class="line add">+       "resolved": "https://registry.npmjs.org/@opentelemetry/api/-/api-1.10.0.tgz",</div>
+      <div class="line add">+       "integrity": "sha512-lMkyes8iHrG+mk6WH7X70MdCLI2RS0FwNBY1PyQ8UemaijE2m5mv5A0Niy3HtbYTFrgkUEQjFMXmSAk2hQDuPQ==",</div>
+      <div class="line add">+       "license": "Apache-2.0",</div>
+      <div class="line add">+       "engines": {</div>
+      <div class="line add">+         "node": "&gt;=8.0.0"</div>
+      <div class="line add">+       }</div>
+      <div class="line add">+     },</div>
+      <div class="line ctx">  ...</div>
+      <div class="line add">+       }</div>
+      <div class="line add">+     },</div>
+      <div class="line add">+     "node_modules/@redis/bloom": {</div>
+      <div class="line add">+       "version": "6.3.1",</div>
+      <div class="line add">+       "resolved": "https://registry.npmjs.org/@redis/bloom/-/bloom-6.3.1.tgz",</div>
+      <div class="line add">+       "integrity": "sha512-dpF9j2yJDoPzSCaZn0MSB3xzmnXQVJeTSAWJcQVcgbmluwhpFeemmII0cF1t+WYfoVS+shEFq79+MmUItgzJLg==",</div>
+      <div class="line add">+       "license": "MIT",</div>
+      <div class="line add">+       "engines": {</div>
+      <div class="line add">+         "node": "&gt;= 20.0.0"</div>
+      <div class="line add">+       },</div>
+      <div class="line add">+       "peerDependencies": {</div>
+      <div class="line add">+         "@redis/client": "^6.3.1"</div>
+      <div class="line add">+       }</div>
+      <div class="line add">+     },</div>
+      <div class="line add">+     "node_modules/@redis/client": {</div>
+      <div class="line add">+       "version": "6.3.1",</div>
+      <div class="line add">+       "resolved": "https://registry.npmjs.org/@redis/client/-/client-6.3.1.tgz",</div>
+      <div class="line add">+       "integrity": "sha512-masbfVKULdoAofwddepZxRhWa4w6zvBHn6TRn90TRPrRkVIlGCur3pFqwWaCbMxtYI9twepkz63e/T/tEH8GjA==",</div>
+      <div class="line add">+       "license": "MIT",</div>
+      <div class="line add">+       "engines": {</div>
+      <div class="line add">+         "node": "&gt;= 20.0.0"</div>
+      <div class="line add">+       },</div>
+      <div class="line add">+       "peerDependencies": {</div>
+      <div class="line add">+         "@node-rs/xxhash": "^1.1.0",</div>
+      <div class="line add">+         "@opentelemetry/api": "&gt;=1 &lt;2"</div>
+      <div class="line add">+       },</div>
+      <div class="line add">+       "peerDependenciesMeta": {</div>
+      <div class="line add">+         "@node-rs/xxhash": {</div>
+      <div class="line add">+           "optional": true</div>
+      <div class="line add">+         },</div>
+      <div class="line add">+         "@opentelemetry/api": {</div>
+      <div class="line add">+           "optional": true</div>
+      <div class="line add">+         }</div>
+      <div class="line add">+       }</div>
+      <div class="line add">+     },</div>
+      <div class="line add">+     "node_modules/@redis/json": {</div>
+      <div class="line add">+       "version": "6.3.1",</div>
+      <div class="line add">+       "resolved": "https://registry.npmjs.org/@redis/json/-/json-6.3.1.tgz",</div>
+      <div class="line add">+       "integrity": "sha512-fMz4kUwJzEftcU9EMaqsjZcUwzpTQLOYRqhQsAD6uKvZWeamblK13ZhgO5SzVSZVk31jmwLeTRpU5GAl5egfUw==",</div>
+      <div class="line add">+       "license": "MIT",</div>
+      <div class="line add">+       "engines": {</div>
+      <div class="line add">+         "node": "&gt;= 20.0.0"</div>
+      <div class="line add">+       },</div>
+      <div class="line add">+       "peerDependencies": {</div>
+      <div class="line add">+         "@redis/client": "^6.3.1"</div>
+      <div class="line add">+       }</div>
+      <div class="line add">+     },</div>
+      <div class="line add">+     "node_modules/@redis/search": {</div>
+      <div class="line add">+       "version": "6.3.1",</div>
+      <div class="line add">+       "resolved": "https://registry.npmjs.org/@redis/search/-/search-6.3.1.tgz",</div>
+      <div class="line add">+       "integrity": "sha512-T67pvPUpW82VrZLvihO8O2DFMC7eY2oMAzMzapCbiPZn7mdWqHMEIlohYim12gIawT5kn6qT/Cvmm4WulKB+kQ==",</div>
+      <div class="line add">+       "license": "MIT",</div>
+      <div class="line add">+       "engines": {</div>
+      <div class="line add">+         "node": "&gt;= 20.0.0"</div>
+      <div class="line add">+       },</div>
+      <div class="line add">+       "peerDependencies": {</div>
+      <div class="line add">+         "@redis/client": "^6.3.1"</div>
+      <div class="line add">+       }</div>
+      <div class="line add">+     },</div>
+      <div class="line add">+     "node_modules/@redis/time-series": {</div>
+      <div class="line add">+       "version": "6.3.1",</div>
+      <div class="line add">+       "resolved": "https://registry.npmjs.org/@redis/time-series/-/time-series-6.3.1.tgz",</div>
+      <div class="line add">+       "integrity": "sha512-MNDgrm+i63M/1a+XA+HcDsScwt4uBh/fGGJ84swTQZTFK5K5wMmxdlTRa4ZgmNJzjxMaszW/ipPScMUGV3aAMg==",</div>
+      <div class="line add">+       "license": "MIT",</div>
+      <div class="line add">+       "engines": {</div>
+      <div class="line add">+         "node": "&gt;= 20.0.0"</div>
+      <div class="line add">+       },</div>
+      <div class="line add">+       "peerDependencies": {</div>
+      <div class="line add">+         "@redis/client": "^6.3.1"</div>
+      <div class="line ctx">  ...</div>
+      <div class="line add">+     },</div>
+      <div class="line add">+     "node_modules/bintrees": {</div>
+      <div class="line add">+       "version": "1.0.2",</div>
+      <div class="line add">+       "resolved": "https://registry.npmjs.org/bintrees/-/bintrees-1.0.2.tgz",</div>
+      <div class="line add">+       "integrity": "sha512-VOMgTMwjAaUG580SXn3LacVgjurrbMme7ZZNYGSSV7mmtY6QQRh0Eg3pwIcntQ77DErK1L0NxkbetjcoXzVwKw==",</div>
+      <div class="line add">+       "license": "MIT"</div>
+      <div class="line ctx">  ...</div>
+      <div class="line add">+     "node_modules/prom-client": {</div>
+      <div class="line add">+       "version": "15.1.3",</div>
+      <div class="line add">+       "resolved": "https://registry.npmjs.org/prom-client/-/prom-client-15.1.3.tgz",</div>
+      <div class="line add">+       "integrity": "sha512-6ZiOBfCywsD4k1BN9IX0uZhF+tJkV8q8llP64G5Hajs4JOeVLPCwpPVcpXy3BwYiUGgyJzsJJQeOIv7+hDSq8g==",</div>
+      <div class="line add">+       "deprecated": "prom-client has been replaced by @prometheus-io/client",</div>
+      <div class="line add">+       "license": "Apache-2.0",</div>
+      <div class="line add">+       "dependencies": {</div>
+      <div class="line add">+         "@opentelemetry/api": "^1.4.0",</div>
+      <div class="line add">+         "tdigest": "^0.1.1"</div>
+      <div class="line add">+       },</div>
+      <div class="line add">+       "engines": {</div>
+      <div class="line add">+         "node": "^16 || ^18 || &gt;=20"</div>
+      <div class="line add">+       }</div>
+      <div class="line add">+     },</div>
+      <div class="line ctx">  ...</div>
+      <div class="line add">+       }</div>
+      <div class="line add">+     },</div>
+      <div class="line add">+     "node_modules/redis": {</div>
+      <div class="line add">+       "version": "6.3.1",</div>
+      <div class="line add">+       "resolved": "https://registry.npmjs.org/redis/-/redis-6.3.1.tgz",</div>
+      <div class="line add">+       "integrity": "sha512-mV96ZKxQ4CGn3SyEGaY0Lb9YA443mdVey3c+mdr0NAUaBxiOZGoYCWX8PoM55kictSOmxlJRtZJxIsmZm3jL+w==",</div>
+      <div class="line add">+       "license": "MIT",</div>
+      <div class="line add">+       "dependencies": {</div>
+      <div class="line add">+         "@redis/bloom": "6.3.1",</div>
+      <div class="line add">+         "@redis/client": "6.3.1",</div>
+      <div class="line add">+         "@redis/json": "6.3.1",</div>
+      <div class="line add">+         "@redis/search": "6.3.1",</div>
+      <div class="line add">+         "@redis/time-series": "6.3.1"</div>
+      <div class="line add">+       },</div>
+      <div class="line add">+       "engines": {</div>
+      <div class="line add">+         "node": "&gt;= 20.0.0"</div>
+      <div class="line ctx">  ...</div>
+      <div class="line add">+       }</div>
+      <div class="line add">+     },</div>
+      <div class="line add">+     "node_modules/tdigest": {</div>
+      <div class="line add">+       "version": "0.1.3",</div>
+      <div class="line add">+       "resolved": "https://registry.npmjs.org/tdigest/-/tdigest-0.1.3.tgz",</div>
+      <div class="line add">+       "integrity": "sha512-zbRt+lT+/H4fRItHshczHErVCQnitJk8MfMT24MqFJf3YL7SJJPqGIGeuOdvxXxM/AHFzKBl7WoyaYwqO9s3Kw==",</div>
+      <div class="line add">+       "license": "MIT",</div>
+      <div class="line add">+       "dependencies": {</div>
+      <div class="line add">+         "bintrees": "1.0.2"</div>
+    </div>
+
+    <div class="why">
+      <div class="why-card">
+        <h4>Conecta no primeiro uso</h4>
+        <p>Importar o módulo não derruba o processo se o Redis estiver fora; se a conexão falhar, a próxima chamada tenta de novo.</p>
+      </div>
+      <div class="why-card">
+        <h4>TTL no set</h4>
+        <p><code class="inline">set(key, value, ttlSeconds)</code> grava com <code class="inline">expiration: { type: "EX" }</code>: a chave expira sozinha.</p>
+      </div>
+      <div class="why-card">
+        <h4>node_modules em volume</h4>
+        <p>Dependência nova: recriar o <code class="inline">nodemodules-volume</code> e subir com <code class="inline">--build</code>, a mesma pegadinha das aulas anteriores.</p>
+      </div>
+    </div>
+
+    <div class="ok">
+      <strong><i class="fa-solid fa-circle-check"></i> Conferido:</strong>
+      <p><code class="inline">node --check</code> sem erro e <code class="inline">redis</code> instalado (o <code class="inline">package-lock.json</code> acima é gerado pelo <code class="inline">npm install redis</code>, não se escreve à mão). Conexão real com o Redis NÃO foi testada.</p>
+    </div>
+  </div>
+
+  <!-- ETAPA 5 -->
+  <div class="entry" id="etapa-5">
+    <div class="entry-dot">5</div>
+    <div class="entry-date">Etapa 5 · Cache</div>
+    <h2>O ranking do chat com cache-aside, e o interruptor do professor</h2>
+    <p class="sub">GET /api/relatorio pergunta ao Redis primeiro (HIT); no MISS consulta o Postgres, grava com TTL de 30 s e responde. Uma flag no próprio Redis liga e desliga o cache sem reiniciar nada.</p>
+
+    <div class="diff">
+      <div class="diff-head">src/app/Services/ChatReportService.js</div>
+      <div class="line add">+ import { QueryTypes } from 'sequelize'</div>
+      <div class="line add">+ import sequelize from '../../database/connections/sequelize.js'</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ /**</div>
+      <div class="line add">+  * A consulta "cara" do cache: o ranking do chat (quem mais falou). Varre a tabela messages inteira</div>
+      <div class="line add">+  * e agrupa por nome. Quanto mais mensagens, mais cara: é o que o cache evita repetir.</div>
+      <div class="line add">+  */</div>
+      <div class="line add">+ export default {</div>
+      <div class="line add">+     async ranking() {</div>
+      <div class="line add">+         return sequelize.query(</div>
+      <div class="line add">+             `SELECT name,</div>
+      <div class="line add">+                     COUNT(*) AS total,</div>
+      <div class="line add">+                     MAX(date) AS last_message_at</div>
+      <div class="line add">+                FROM messages</div>
+      <div class="line add">+               GROUP BY name</div>
+      <div class="line add">+               ORDER BY total DESC</div>
+      <div class="line add">+               LIMIT 10`,</div>
+      <div class="line add">+             { type: QueryTypes.SELECT }</div>
+      <div class="line add">+         )</div>
+      <div class="line add">+     }</div>
+      <div class="line add">+ }</div>
+    </div>
+
+    <div class="diff">
+      <div class="diff-head">src/app/Http/Controllers/ReportController.js</div>
+      <div class="line add">+ import redis from '../../../database/connections/redis.js'</div>
+      <div class="line add">+ import ChatReportService from '../../Services/ChatReportService.js'</div>
+      <div class="line add">+ import { cacheRequests } from '../../../utils/metrics.js'</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ const CACHE_KEY = 'report:chat-ranking'</div>
+      <div class="line add">+ const CACHE_TTL_SECONDS = 30</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ /**</div>
+      <div class="line add">+  * GET /api/relatorio: ranking do chat com cache-aside no Redis.</div>
+      <div class="line add">+  * Primeiro pergunta ao Redis (HIT); se não está lá (MISS), consulta o Postgres, grava com TTL e responde.</div>
+      <div class="line add">+  * A flag cache:ativo liga e desliga o cache sem reiniciar nada (POST /api/admin/cache).</div>
+      <div class="line add">+  * O header X-Cache diz de onde veio a resposta: o botão do chat usa para contar os hits.</div>
+      <div class="line add">+  */</div>
+      <div class="line add">+ export default async function ReportController(request, response) {</div>
+      <div class="line add">+     try {</div>
+      <div class="line add">+         const isCacheOn = (await redis.get('cache:ativo')) === '1'</div>
+      <div class="line add">+ </div>
+      <div class="line add">+         if (isCacheOn) {</div>
+      <div class="line add">+             const cached = await redis.get(CACHE_KEY)</div>
+      <div class="line add">+ </div>
+      <div class="line add">+             if (cached) {</div>
+      <div class="line add">+                 cacheRequests.inc({ result: 'hit' })</div>
+      <div class="line add">+                 response.set('X-Cache', 'HIT')</div>
+      <div class="line add">+                 return response.json(JSON.parse(cached))</div>
+      <div class="line add">+             }</div>
+      <div class="line add">+         }</div>
+      <div class="line add">+ </div>
+      <div class="line add">+         const ranking = await ChatReportService.ranking()</div>
+      <div class="line add">+ </div>
+      <div class="line add">+         if (isCacheOn) {</div>
+      <div class="line add">+             await redis.set(CACHE_KEY, JSON.stringify(ranking), CACHE_TTL_SECONDS)</div>
+      <div class="line add">+         }</div>
+      <div class="line add">+ </div>
+      <div class="line add">+         cacheRequests.inc({ result: 'miss' })</div>
+      <div class="line add">+         response.set('X-Cache', 'MISS')</div>
+      <div class="line add">+         return response.json(ranking)</div>
+      <div class="line add">+     } catch (error) {</div>
+      <div class="line add">+         console.error(error)</div>
+      <div class="line add">+ </div>
+      <div class="line add">+         return response.status(500).json({</div>
+      <div class="line add">+             error: 'Internal server error'</div>
+      <div class="line add">+         })</div>
+      <div class="line add">+     }</div>
+      <div class="line add">+ }</div>
+    </div>
+
+    <div class="diff">
+      <div class="diff-head">src/app/Http/Middlewares/AdminMiddleware.js</div>
+      <div class="line add">+ /**</div>
+      <div class="line add">+  * Rotas do professor (ligar e desligar o cache): exige o segredo ADMIN_TOKEN, do .env, no header x-admin-token.</div>
+      <div class="line add">+  * Sem ADMIN_TOKEN configurado, ninguém entra.</div>
+      <div class="line add">+  */</div>
+      <div class="line add">+ export default function AdminMiddleware(request, response, next) {</div>
+      <div class="line add">+     const token = process.env.ADMIN_TOKEN</div>
+      <div class="line add">+ </div>
+      <div class="line add">+     if (!token || request.headers['x-admin-token'] !== token) {</div>
+      <div class="line add">+         return response.status(401).json({ error: 'Unauthorized' })</div>
+      <div class="line add">+     }</div>
+      <div class="line add">+ </div>
+      <div class="line add">+     return next()</div>
+      <div class="line add">+ }</div>
+    </div>
+
+    <div class="diff">
+      <div class="diff-head">src/app/Http/Controllers/ToggleCacheController.js</div>
+      <div class="line add">+ import redis from '../../../database/connections/redis.js'</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ /**</div>
+      <div class="line add">+  * POST /api/admin/cache  { "ativo": true | false }</div>
+      <div class="line add">+  * Liga ou desliga o cache do relatório gravando a flag cache:ativo no próprio Redis (sem TTL).</div>
+      <div class="line add">+  */</div>
+      <div class="line add">+ export default async function ToggleCacheController(request, response) {</div>
+      <div class="line add">+     try {</div>
+      <div class="line add">+         const isActive = request.body?.ativo === true</div>
+      <div class="line add">+ </div>
+      <div class="line add">+         await redis.set('cache:ativo', isActive ? '1' : '0', 60 * 60 * 24)</div>
+      <div class="line add">+ </div>
+      <div class="line add">+         return response.json({ ativo: isActive })</div>
+      <div class="line add">+     } catch (error) {</div>
+      <div class="line add">+         console.error(error)</div>
+      <div class="line add">+ </div>
+      <div class="line add">+         return response.status(500).json({</div>
+      <div class="line add">+             error: 'Internal server error'</div>
+      <div class="line add">+         })</div>
+      <div class="line add">+     }</div>
+      <div class="line add">+ }</div>
+    </div>
+
+    <div class="diff">
+      <div class="diff-head">src/routes/router.js</div>
+      <div class="line ctx">  import LoginController from '../app/Http/Controllers/LoginController.js';</div>
+      <div class="line add">+ import ReportController from '../app/Http/Controllers/ReportController.js';</div>
+      <div class="line add">+ import MetricsController from '../app/Http/Controllers/MetricsController.js';</div>
+      <div class="line add">+ import MetricsMiddleware from '../app/Http/Middlewares/MetricsMiddleware.js';</div>
+      <div class="line add">+ import ToggleCacheController from '../app/Http/Controllers/ToggleCacheController.js';</div>
+      <div class="line add">+ import AdminMiddleware from '../app/Http/Middlewares/AdminMiddleware.js';</div>
+      <div class="line ctx">  import AuthMiddleware from '../app/Http/Middlewares/AuthMiddleware.js';</div>
+      <div class="line ctx">  ...</div>
+      <div class="line ctx">  router.use(CorsMiddleware);</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ /**</div>
+      <div class="line add">+  * Métricas: mede a duração de toda requisição (histograma do Prometheus)</div>
+      <div class="line add">+  */</div>
+      <div class="line add">+ router.use(MetricsMiddleware);</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ /**</div>
+      <div class="line add">+  * Endpoint que o Prometheus coleta (o nginx bloqueia o acesso de fora)</div>
+      <div class="line add">+  * GET /metrics</div>
+      <div class="line add">+  */</div>
+      <div class="line add">+ router.get('/metrics', MetricsController);</div>
+      <div class="line ctx"></div>
+      <div class="line ctx">  ...</div>
+      <div class="line ctx"></div>
+      <div class="line add">+ /** Ranking do chat com cache-aside no Redis (o botão do chat dispara requisições aqui) */</div>
+      <div class="line add">+ router.get('/api/relatorio', ReportController);</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ /** Liga/desliga o cache do relatório (só o professor, com ADMIN_TOKEN) */</div>
+      <div class="line add">+ router.post('/api/admin/cache', AdminMiddleware, ToggleCacheController);</div>
+      <div class="line add">+ </div>
+      <div class="line ctx">  /** Router para usuários */</div>
+    </div>
+
+    <div class="diff">
+      <div class="diff-head">.env.example</div>
+      <div class="line ctx">  HOST_LAN_IP=</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ # Segredo do professor para ligar/desligar o cache (POST /api/admin/cache, header x-admin-token)</div>
+      <div class="line add">+ ADMIN_TOKEN=</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ # Portas publicadas no host (padrões se ficarem vazias: Grafana 3002, Prometheus 9090) e senha do admin do Grafana</div>
+      <div class="line add">+ GRAFANA_PORT=3002</div>
+      <div class="line add">+ PROMETHEUS_PORT=9090</div>
+      <div class="line add">+ GRAFANA_PASSWORD=admin</div>
+    </div>
+
+    <div class="why">
+      <div class="why-card">
+        <h4>Cache-aside</h4>
+        <p>A aplicação comanda: Redis primeiro; se não tem, banco; depois grava no Redis. O Postgres continua sendo o dado oficial.</p>
+      </div>
+      <div class="why-card">
+        <h4>Quem ensina o cache</h4>
+        <p>O header <code class="inline">X-Cache: HIT|MISS</code> diz de onde veio a resposta; o botão do chat usa para contar os hits.</p>
+      </div>
+      <div class="why-card">
+        <h4>Flag cache:ativo</h4>
+        <p>Desligado é o padrão (chave ausente): a sala sente o banco sozinho. O <code class="inline">POST /api/admin/cache</code> liga, com o <code class="inline">ADMIN_TOKEN</code> do <code class="inline">.env</code> no header <code class="inline">x-admin-token</code>; sem token configurado, ninguém entra.</p>
+      </div>
+      <div class="why-card">
+        <h4>Consulta cara só com volume</h4>
+        <p>O ranking é um <code class="inline">GROUP BY</code> sobre a tabela <code class="inline">messages</code>: com poucas mensagens a diferença do cache não aparece. Falta um seed com muitas linhas para a demonstração.</p>
+      </div>
+    </div>
+
+    <div class="ok">
+      <strong><i class="fa-solid fa-circle-check"></i> Conferido:</strong>
+      <p><code class="inline">node --check</code> sem erro em todos os arquivos. Rota, Redis e banco NÃO foram acionados.</p>
+    </div>
+  </div>
+
+  <!-- ETAPA 6 -->
+  <div class="entry" id="etapa-6">
+    <div class="entry-dot">6</div>
+    <div class="entry-date">Etapa 6 · React: o chat</div>
+    <h2>O botão que manda requisições (LoadButton) dentro do chat</h2>
+    <p class="sub">Um cartão novo no chat: o aluno clica e o navegador dispara 50 requisições ao ranking de uma vez. A tela mostra quantas deram certo, quantas vieram do cache e o tempo médio.</p>
+
+    <div class="diff">
+      <div class="diff-head">src/resources/js/components/LoadButton.tsx</div>
+      <div class="line add">+ import { useState } from "react"</div>
+      <div class="line add">+ import axios from "axios"</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ type Result = { ms: number, isHit: boolean } | null</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ type Summary = {</div>
+      <div class="line add">+     ok: number</div>
+      <div class="line add">+     errors: number</div>
+      <div class="line add">+     hits: number</div>
+      <div class="line add">+     averageMs: number</div>
+      <div class="line add">+ }</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ const TOTAL_REQUESTS = 50</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ // Uma requisição ao ranking do chat: devolve o tempo (ms) e se veio do cache (header X-Cache), ou null se falhou</div>
+      <div class="line add">+ async function measure(): Promise&lt;Result&gt; {</div>
+      <div class="line add">+     const start = performance.now()</div>
+      <div class="line add">+ </div>
+      <div class="line add">+     try {</div>
+      <div class="line add">+         const response = await axios.get("/api/relatorio")</div>
+      <div class="line add">+ </div>
+      <div class="line add">+         return { ms: performance.now() - start, isHit: response.headers["x-cache"] === "HIT" }</div>
+      <div class="line add">+     } catch {</div>
+      <div class="line add">+         return null</div>
+      <div class="line add">+     }</div>
+      <div class="line add">+ }</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ // O botão que manda requisições: a sala toda clica ao mesmo tempo e o servidor sente (e o cache aparece nos hits)</div>
+      <div class="line add">+ export function LoadButton() {</div>
+      <div class="line add">+     const [isLoading, setIsLoading] = useState(false)</div>
+      <div class="line add">+     const [summary, setSummary] = useState&lt;Summary | null&gt;(null)</div>
+      <div class="line add">+ </div>
+      <div class="line add">+     // Clique: dispara TOTAL_REQUESTS requisições de uma vez e resume o resultado na tela</div>
+      <div class="line add">+     async function aoDispararRequisicoes() {</div>
+      <div class="line add">+         setIsLoading(true)</div>
+      <div class="line add">+ </div>
+      <div class="line add">+         const results = await Promise.all(Array.from({ length: TOTAL_REQUESTS }, () =&gt; measure()))</div>
+      <div class="line add">+         const done = results.filter((result): result is NonNullable&lt;Result&gt; =&gt; result !== null)</div>
+      <div class="line add">+         const total = done.reduce((sum, result) =&gt; sum + result.ms, 0)</div>
+      <div class="line add">+         const average = done.length &gt; 0 ? total / done.length : 0</div>
+      <div class="line add">+ </div>
+      <div class="line add">+         setSummary({</div>
+      <div class="line add">+             ok: done.length,</div>
+      <div class="line add">+             errors: TOTAL_REQUESTS - done.length,</div>
+      <div class="line add">+             hits: done.filter(result =&gt; result.isHit).length,</div>
+      <div class="line add">+             averageMs: Math.round(average)</div>
+      <div class="line add">+         })</div>
+      <div class="line add">+         setIsLoading(false)</div>
+      <div class="line add">+     }</div>
+      <div class="line add">+ </div>
+      <div class="line add">+     return (</div>
+      <div class="line add">+         &lt;div className="card mt-3"&gt;</div>
+      <div class="line add">+             &lt;div className="card-header"&gt;&lt;strong&gt;Carga na API&lt;/strong&gt;&lt;/div&gt;</div>
+      <div class="line add">+ </div>
+      <div class="line add">+             &lt;div className="card-body d-flex flex-column gap-2"&gt;</div>
+      <div class="line add">+                 &lt;button className="btn btn-warning" type="button" disabled={isLoading} onClick={aoDispararRequisicoes}&gt;</div>
+      <div class="line add">+                     {isLoading ? "Disparando..." : `Disparar ${TOTAL_REQUESTS} requisições`}</div>
+      <div class="line add">+                 &lt;/button&gt;</div>
+      <div class="line add">+ </div>
+      <div class="line add">+                 {summary &amp;&amp; (</div>
+      <div class="line add">+                     &lt;small className="text-muted"&gt;</div>
+      <div class="line add">+                         {summary.ok} ok · {summary.errors} erros · {summary.hits} do cache · média de {summary.averageMs} ms</div>
+      <div class="line add">+                     &lt;/small&gt;</div>
+      <div class="line add">+                 )}</div>
+      <div class="line add">+             &lt;/div&gt;</div>
+      <div class="line add">+         &lt;/div&gt;</div>
+      <div class="line add">+     )</div>
+      <div class="line add">+ }</div>
+    </div>
+
+    <div class="diff">
+      <div class="diff-head">src/resources/js/components/ChatApp.tsx</div>
+      <div class="line ctx">  import type { Socket } from "socket.io-client"</div>
+      <div class="line ctx">  import type { ChatFeedItem, ChatJoin, ChatMessage, OnlineUser } from "../types/chat"</div>
+      <div class="line add">+ import { LoadButton } from "./LoadButton"</div>
+      <div class="line ctx"></div>
+      <div class="line ctx">  // Os botões de reação: clicar manda o emoji como mensagem</div>
+      <div class="line ctx">  ...</div>
+      <div class="line ctx">              &lt;/ul&gt;</div>
+      <div class="line ctx">          &lt;/div&gt;</div>
+      <div class="line add">+ </div>
+      <div class="line add">+         &lt;LoadButton /&gt;</div>
+      <div class="line ctx">          &lt;/&gt;</div>
+      <div class="line ctx">      )</div>
+    </div>
+
+    <div class="why">
+      <div class="why-card">
+        <h4>Handler explícito</h4>
+        <p>O <code class="inline">aoDispararRequisicoes</code> está ligado no <code class="inline">onClick</code>: clique, handler, <code class="inline">setIsLoading</code>, requisições, <code class="inline">setSummary</code>.</p>
+      </div>
+      <div class="why-card">
+        <h4>Só const</h4>
+        <p>Nenhum <code class="inline">let</code>: o resumo é calculado com <code class="inline">filter</code> e <code class="inline">reduce</code>; o estado booleano é <code class="inline">isLoading</code>.</p>
+      </div>
+      <div class="why-card">
+        <h4>A sala é o tráfego</h4>
+        <p>Cada aluno dispara 50; com a sala inteira clicando o servidor sente. O navegador limita 6 conexões simultâneas por origem, então a soma dos alunos é que pesa.</p>
+      </div>
+    </div>
+
+    <div class="ok">
+      <strong><i class="fa-solid fa-circle-check"></i> Conferido:</strong>
+      <p><code class="inline">tsc --noEmit</code> sem erro. Não foi aberto no navegador.</p>
+    </div>
+  </div>
+
+  <!-- ETAPA 7 -->
+  <div class="entry" id="etapa-7">
+    <div class="entry-dot">7</div>
+    <div class="entry-date">Etapa 7 · Documentação</div>
+    <h2>O diagrama da rede Docker: duas redes, Redis, Prometheus e Grafana</h2>
+    <p class="sub">O redis-container entra com os fios do nodeweb, do nodecommand e do nodeworker. A app-network única vira dois retângulos: edge-network (embaixo à esquerda: nginx, vite-hmr e vite-compiler, empilhados na vertical) e data-network (o maior: bancos, Redis, fila, command e worker). nodeweb e nodewebsocket ficam empilhados na faixa onde os dois se sobrepõem, nas duas redes. O Prometheus (só dados) e o Grafana (na ponte, nas duas redes) entram com portas 9090 e 3002, volumes, pastas de configuração e os fios prom-web, grafana-prom e grafana-pg. O cenário do chat ganhou o passo do save-message, e há dois cenários novos: o relatório com cache e a observabilidade.</p>
+
+    <div class="diff">
+      <div class="diff-head">aulas/rede-docker/index.html</div>
+      <div class="line ctx">        &lt;button type="button" class="btn" data-scenario="busca"&gt;HTTP API · search (Elastic)&lt;/button&gt;</div>
+      <div class="line add">+       &lt;button type="button" class="btn" data-scenario="cache"&gt;HTTP API · relatório com cache (Redis)&lt;/button&gt;</div>
+      <div class="line add">+       &lt;button type="button" class="btn" data-scenario="observabilidade"&gt;Observabilidade (Prometheus + Grafana)&lt;/button&gt;</div>
+      <div class="line ctx">        &lt;button type="button" class="btn" data-scenario="websocket"&gt;WebSocket · chat (túnel)&lt;/button&gt;</div>
+      <div class="line ctx">  ...</div>
+      <div class="line ctx">        &lt;div class="host-box" style="--x:0;--y:0;--w:2100;--h:1050"&gt;&lt;/div&gt;</div>
+      <div class="line rem">-       &lt;div class="lan-box" style="--x:0;--y:1090;--w:2100;--h:200"&gt;&lt;span class="lan-title"&gt;Rede local (Wi-Fi) · outros dispositivos: fora do seu PC e fora da app-network&lt;/span&gt;&lt;/div&gt;</div>
+      <div class="line add">+       &lt;div class="lan-box" style="--x:0;--y:1090;--w:2100;--h:200"&gt;&lt;span class="lan-title"&gt;Rede local (Wi-Fi) · outros dispositivos: fora do seu PC e fora das redes edge e data&lt;/span&gt;&lt;/div&gt;</div>
+      <div class="line ctx"></div>
+      <div class="line ctx">  ...</div>
+      <div class="line ctx"></div>
+      <div class="line rem">-       &lt;div class="net" style="--x:200;--y:200;--w:1880;--h:780"&gt;&lt;span class="net-title"&gt;app-network (bridge)&lt;/span&gt;&lt;/div&gt;</div>
+      <div class="line add">+       &lt;!-- as duas redes: dois retângulos (data-network é o maior; edge-network fica embaixo à esquerda).</div>
+      <div class="line add">+            Onde as duas se sobrepõem ficam nodeweb e nodewebsocket: containers nas DUAS redes (a ponte) --&gt;</div>
+      <div class="line add">+       &lt;svg class="netshape" viewBox="0 0 2100 1300" preserveAspectRatio="none" aria-hidden="true"&gt;</div>
+      <div class="line add">+         &lt;rect class="net-data" x="685" y="200" width="1395" height="785" rx="18"/&gt;</div>
+      <div class="line add">+         &lt;rect class="net-edge" x="200" y="400" width="900" height="585" rx="18"/&gt;</div>
+      <div class="line add">+         &lt;text class="net-label edge" x="224" y="968"&gt;edge-network&lt;/text&gt;</div>
+      <div class="line add">+         &lt;text class="net-label data" x="2060" y="968" text-anchor="end"&gt;data-network&lt;/text&gt;</div>
+      <div class="line add">+       &lt;/svg&gt;</div>
+      <div class="line ctx"></div>
+      <div class="line ctx">  ...</div>
+      <div class="line ctx">        &lt;!-- containers --&gt;</div>
+      <div class="line rem">-       &lt;div class="item container" data-id="nginx" tabindex="0" style="--x:232;--y:400;--w:520;--h:130"&gt;nginx&lt;span class="addr"&gt;nginx-container:80&lt;/span&gt;&lt;span class="mount-badge top" data-mb="mb-nginx-aulas" style="left:22%"&gt;./aulas:/var/www/aulas&lt;/span&gt;&lt;span class="mount-badge top" data-mb="mb-nginx-logs" style="left:68%"&gt;./src/logs/nginx:/var/log/nginx&lt;/span&gt;&lt;span class="mount-badge bottom vol" data-mb="mb-nginx-public" style="left:20%"&gt;public-volume&lt;br&gt;:/var/www&lt;/span&gt;&lt;/div&gt;</div>
+      <div class="line add">+       &lt;div class="item container" data-id="nginx" tabindex="0" style="--x:232;--y:430;--w:440;--h:130"&gt;nginx&lt;span class="addr"&gt;nginx-container:80&lt;/span&gt;&lt;span class="mount-badge top" data-mb="mb-nginx-aulas" style="left:22%"&gt;./aulas:/var/www/aulas&lt;/span&gt;&lt;span class="mount-badge top" data-mb="mb-nginx-logs" style="left:68%"&gt;./src/logs/nginx:/var/log/nginx&lt;/span&gt;&lt;span class="mount-badge bottom vol" data-mb="mb-nginx-public" style="left:20%"&gt;public-volume&lt;br&gt;:/var/www&lt;/span&gt;&lt;/div&gt;</div>
+      <div class="line ctx">        &lt;div class="item container" data-id="rabbitmq" tabindex="0" style="--x:700;--y:262;--w:360;--h:120"&gt;rabbitmq&lt;span class="addr"&gt;rabbitmq_host:5672 · :15672&lt;/span&gt;&lt;span class="mount-badge top vol" data-mb="mb-rabbit-vol" style="left:15%"&gt;rabbitmq-volume&lt;br&gt;:/var/lib/rabbitmq&lt;/span&gt;&lt;/div&gt;</div>
+      <div class="line ctx">  ...</div>
+      <div class="line ctx">        &lt;div class="item container" data-id="elasticsearch" tabindex="0" style="--x:1550;--y:262;--w:220;--h:120"&gt;elasticsearch&lt;span class="addr"&gt;elasticsearch_host:9200&lt;/span&gt;&lt;span class="mount-badge top vol" data-mb="mb-es-vol" style="left:50%"&gt;elastic-volume&lt;br&gt;:/usr/share/&lt;br&gt;elasticsearch/data&lt;/span&gt;&lt;/div&gt;</div>
+      <div class="line rem">-       &lt;div class="item container" data-id="vitehmr" tabindex="0" style="--x:262;--y:720;--w:300;--h:150"&gt;vite-hmr&lt;span class="addr"&gt;nodevitehmr-container:5172&lt;/span&gt;&lt;span class="mount-badge bottom" data-mb="mb-hmr-resources" style="left:26%"&gt;./src/resources&lt;br&gt;:/app/resources&lt;/span&gt;&lt;span class="mount-badge bottom vol" data-mb="mb-hmr-nm" style="left:74%"&gt;nodemodules-volume&lt;br&gt;:/app/node_modules&lt;/span&gt;&lt;/div&gt;</div>
+      <div class="line rem">-       &lt;div class="item container" data-id="vitecompiler" tabindex="0" style="--x:576;--y:720;--w:300;--h:150"&gt;vite-compiler&lt;span class="addr"&gt;nodevitecompiler-container&lt;/span&gt;&lt;span class="mount-badge top vol" data-mb="mb-compiler-public" style="left:22%"&gt;public-volume&lt;br&gt;:/app/public&lt;/span&gt;&lt;span class="mount-badge bottom" data-mb="mb-compiler-resources" style="left:26%"&gt;./src/resources&lt;br&gt;:/app/resources&lt;/span&gt;&lt;span class="mount-badge bottom vol" data-mb="mb-compiler-nm" style="left:74%"&gt;nodemodules-volume&lt;br&gt;:/app/node_modules&lt;/span&gt;&lt;/div&gt;</div>
+      <div class="line rem">-       &lt;div class="item container" data-id="nodeweb" tabindex="0" style="--x:890;--y:720;--w:270;--h:150"&gt;nodeweb&lt;span class="addr"&gt;nodeweb_host:3000&lt;/span&gt;&lt;span class="mount-badge top vol" data-mb="mb-web-public" style="left:20%"&gt;public-volume&lt;br&gt;:/app/public&lt;/span&gt;&lt;span class="mount-badge bottom" data-mb="mb-web-src" style="left:76%"&gt;./src:/app&lt;/span&gt;&lt;span class="mount-badge bottom vol" data-mb="mb-web-nm" style="left:28%"&gt;nodemodules-volume&lt;br&gt;:/app/node_modules&lt;/span&gt;&lt;/div&gt;</div>
+      <div class="line rem">-       &lt;div class="item container ephemeral" data-id="nodecommand" tabindex="0" style="--x:1174;--y:720;--w:270;--h:150"&gt;nodecommand&lt;span class="addr"&gt;nodecommand_host&lt;/span&gt;&lt;small&gt;efêmero: run --rm&lt;/small&gt;&lt;span class="mount-badge bottom" data-mb="mb-cmd-src" style="left:25%"&gt;./src:/app&lt;/span&gt;&lt;span class="mount-badge bottom vol" data-mb="mb-cmd-nm" style="left:72%"&gt;nodemodules-volume&lt;br&gt;:/app/node_modules&lt;/span&gt;&lt;/div&gt;</div>
+      <div class="line rem">-       &lt;div class="item container" data-id="nodeworker" tabindex="0" style="--x:1458;--y:720;--w:270;--h:150"&gt;nodeworker&lt;span class="addr"&gt;nodeworker_host&lt;/span&gt;&lt;span class="mount-badge bottom" data-mb="mb-worker-src" style="left:25%"&gt;./src:/app&lt;/span&gt;&lt;span class="mount-badge bottom vol" data-mb="mb-worker-nm" style="left:72%"&gt;nodemodules-volume&lt;br&gt;:/app/node_modules&lt;/span&gt;&lt;/div&gt;</div>
+      <div class="line rem">-       &lt;div class="item container" data-id="nodewebsocket" tabindex="0" style="--x:1742;--y:720;--w:270;--h:150"&gt;nodewebsocket&lt;span class="addr"&gt;nodewebsocket_host:3001&lt;/span&gt;&lt;small&gt;túnel · Socket.IO&lt;/small&gt;&lt;span class="mount-badge bottom" data-mb="mb-ws-src" style="left:25%"&gt;./src:/app&lt;/span&gt;&lt;span class="mount-badge bottom vol" data-mb="mb-ws-nm" style="left:72%"&gt;nodemodules-volume&lt;br&gt;:/app/node_modules&lt;/span&gt;&lt;/div&gt;</div>
+      <div class="line add">+       &lt;div class="item container" data-id="redis" tabindex="0" style="--x:1800;--y:262;--w:220;--h:120"&gt;redis&lt;span class="addr"&gt;redis_host:6379&lt;/span&gt;&lt;small&gt;cache em memória&lt;/small&gt;&lt;/div&gt;</div>
+      <div class="line add">+       &lt;div class="item container" data-id="vitehmr" tabindex="0" style="--x:262;--y:590;--w:300;--h:130"&gt;vite-hmr&lt;span class="addr"&gt;nodevitehmr-container:5172&lt;/span&gt;&lt;span class="mount-badge bottom" data-mb="mb-hmr-resources" style="left:26%"&gt;./src/resources&lt;br&gt;:/app/resources&lt;/span&gt;&lt;span class="mount-badge bottom vol" data-mb="mb-hmr-nm" style="left:74%"&gt;nodemodules-volume&lt;br&gt;:/app/node_modules&lt;/span&gt;&lt;/div&gt;</div>
+      <div class="line add">+       &lt;div class="item container" data-id="vitecompiler" tabindex="0" style="--x:262;--y:790;--w:300;--h:130"&gt;vite-compiler&lt;span class="addr"&gt;nodevitecompiler-container&lt;/span&gt;&lt;span class="mount-badge top vol" data-mb="mb-compiler-public" style="left:22%"&gt;public-volume&lt;br&gt;:/app/public&lt;/span&gt;&lt;span class="mount-badge bottom" data-mb="mb-compiler-resources" style="left:26%"&gt;./src/resources&lt;br&gt;:/app/resources&lt;/span&gt;&lt;span class="mount-badge bottom vol" data-mb="mb-compiler-nm" style="left:74%"&gt;nodemodules-volume&lt;br&gt;:/app/node_modules&lt;/span&gt;&lt;/div&gt;</div>
+      <div class="line add">+       &lt;div class="item container" data-id="nodeweb" tabindex="0" style="--x:730;--y:430;--w:270;--h:120"&gt;nodeweb&lt;span class="addr"&gt;nodeweb_host:3000&lt;/span&gt;&lt;span class="mount-badge top vol" data-mb="mb-web-public" style="left:20%"&gt;public-volume&lt;br&gt;:/app/public&lt;/span&gt;&lt;span class="mount-badge bottom" data-mb="mb-web-src" style="left:76%"&gt;./src:/app&lt;/span&gt;&lt;span class="mount-badge bottom vol" data-mb="mb-web-nm" style="left:28%"&gt;nodemodules-volume&lt;br&gt;:/app/node_modules&lt;/span&gt;&lt;/div&gt;</div>
+      <div class="line add">+       &lt;div class="item container ephemeral" data-id="nodecommand" tabindex="0" style="--x:1530;--y:430;--w:270;--h:140"&gt;nodecommand&lt;span class="addr"&gt;nodecommand_host&lt;/span&gt;&lt;small&gt;efêmero: run --rm&lt;/small&gt;&lt;span class="mount-badge bottom" data-mb="mb-cmd-src" style="left:25%"&gt;./src:/app&lt;/span&gt;&lt;span class="mount-badge bottom vol" data-mb="mb-cmd-nm" style="left:72%"&gt;nodemodules-volume&lt;br&gt;:/app/node_modules&lt;/span&gt;&lt;/div&gt;</div>
+      <div class="line add">+       &lt;div class="item container" data-id="nodeworker" tabindex="0" style="--x:1530;--y:640;--w:270;--h:140"&gt;nodeworker&lt;span class="addr"&gt;nodeworker_host&lt;/span&gt;&lt;span class="mount-badge bottom" data-mb="mb-worker-src" style="left:25%"&gt;./src:/app&lt;/span&gt;&lt;span class="mount-badge bottom vol" data-mb="mb-worker-nm" style="left:72%"&gt;nodemodules-volume&lt;br&gt;:/app/node_modules&lt;/span&gt;&lt;/div&gt;</div>
+      <div class="line add">+       &lt;div class="item container" data-id="grafana" tabindex="0" style="--x:730;--y:790;--w:270;--h:120"&gt;grafana&lt;span class="addr"&gt;grafana_host:3000&lt;/span&gt;&lt;small&gt;só mostra&lt;/small&gt;&lt;span class="mount-badge bottom" data-mb="mb-grafana-prov" style="left:20%"&gt;provisioning&lt;br&gt;:/etc/grafana/&lt;br&gt;provisioning&lt;/span&gt;&lt;span class="mount-badge bottom vol" data-mb="mb-grafana-vol" style="left:78%"&gt;grafana-volume&lt;br&gt;:/var/lib/grafana&lt;/span&gt;&lt;/div&gt;</div>
+      <div class="line add">+       &lt;div class="item container" data-id="prometheus" tabindex="0" style="--x:1190;--y:730;--w:270;--h:120"&gt;prometheus&lt;span class="addr"&gt;prometheus_host:9090&lt;/span&gt;&lt;small&gt;coleta e guarda&lt;/small&gt;&lt;span class="mount-badge bottom" data-mb="mb-prom-conf" style="left:22%"&gt;prometheus.yml&lt;br&gt;:/etc/prometheus/&lt;br&gt;prometheus.yml&lt;/span&gt;&lt;span class="mount-badge bottom vol" data-mb="mb-prom-vol" style="left:80%"&gt;prometheus-volume&lt;br&gt;:/prometheus&lt;/span&gt;&lt;/div&gt;</div>
+      <div class="line add">+       &lt;div class="item container" data-id="nodewebsocket" tabindex="0" style="--x:730;--y:600;--w:270;--h:120"&gt;nodewebsocket&lt;span class="addr"&gt;nodewebsocket_host:3001&lt;/span&gt;&lt;small&gt;túnel · Socket.IO&lt;/small&gt;&lt;span class="mount-badge bottom" data-mb="mb-ws-src" style="left:25%"&gt;./src:/app&lt;/span&gt;&lt;span class="mount-badge bottom vol" data-mb="mb-ws-nm" style="left:72%"&gt;nodemodules-volume&lt;br&gt;:/app/node_modules&lt;/span&gt;&lt;/div&gt;</div>
+      <div class="line ctx"></div>
+      <div class="line ctx">        &lt;!-- portas publicadas (host → container), na borda da rede --&gt;</div>
+      <div class="line rem">-       &lt;div class="item port" data-id="p8080" tabindex="0" style="--x:124;--y:449;--w:104;--h:32"&gt;8080 → 80&lt;/div&gt;</div>
+      <div class="line rem">-       &lt;div class="item port" data-id="p5172" tabindex="0" style="--x:140;--y:779;--w:120;--h:32"&gt;5172 → 5172&lt;/div&gt;</div>
+      <div class="line add">+       &lt;div class="item port" data-id="p8080" tabindex="0" style="--x:124;--y:479;--w:104;--h:32"&gt;8080 → 80&lt;/div&gt;</div>
+      <div class="line add">+       &lt;div class="item port" data-id="p5172" tabindex="0" style="--x:140;--y:639;--w:120;--h:32"&gt;5172 → 5172&lt;/div&gt;</div>
+      <div class="line ctx">        &lt;div class="item port" data-id="p5672" tabindex="0" style="--x:822;--y:184;--w:120;--h:32"&gt;5672 → 5672&lt;/div&gt;</div>
+      <div class="line ctx">        &lt;div class="item port" data-id="p15672" tabindex="0" style="--x:960;--y:184;--w:140;--h:32"&gt;15672 → 15672&lt;/div&gt;</div>
+      <div class="line add">+       &lt;div class="item port" data-id="p3002" tabindex="0" style="--x:124;--y:870;--w:130;--h:32"&gt;3002 → 3000&lt;/div&gt;</div>
+      <div class="line add">+       &lt;div class="item port" data-id="p9090" tabindex="0" style="--x:10;--y:940;--w:112;--h:32"&gt;9090 → 9090&lt;/div&gt;</div>
+      <div class="line ctx">        &lt;div class="item port" data-id="p6789" tabindex="0" style="--x:1290;--y:184;--w:120;--h:32"&gt;6789 → 5432&lt;/div&gt;</div>
+      <div class="line ctx">  ...</div>
+      <div class="line ctx">        &lt;div class="item volume" data-id="v-elastic" tabindex="0" style="--x:1634;--y:174;--w:52;--h:52"&gt;&lt;span class="icon"&gt;&lt;/span&gt;&lt;span class="mount-label above"&gt;&lt;b&gt;elastic-volume&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;</div>
+      <div class="line rem">-       &lt;div class="item volume" data-id="v-public" tabindex="0" style="--x:174;--y:614;--w:52;--h:52"&gt;&lt;span class="icon"&gt;&lt;/span&gt;&lt;span class="mount-label left"&gt;&lt;b&gt;public-volume&lt;/b&gt;&lt;br&gt;saída do Vite&lt;/span&gt;&lt;/div&gt;</div>
+      <div class="line add">+       &lt;div class="item volume" data-id="v-public" tabindex="0" style="--x:174;--y:730;--w:52;--h:52"&gt;&lt;span class="icon"&gt;&lt;/span&gt;&lt;span class="mount-label left"&gt;&lt;b&gt;public-volume&lt;/b&gt;&lt;br&gt;saída do Vite&lt;/span&gt;&lt;/div&gt;</div>
+      <div class="line ctx">        &lt;div class="item volume" data-id="v-nodemodules" tabindex="0" style="--x:900;--y:954;--w:52;--h:52"&gt;&lt;span class="icon"&gt;&lt;/span&gt;&lt;span class="mount-label below"&gt;&lt;b&gt;nodemodules-volume&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;</div>
+      <div class="line ctx">  ...</div>
+      <div class="line ctx">        &lt;div class="item bind" data-id="b-resources" tabindex="0" style="--x:455;--y:956;--w:52;--h:42"&gt;&lt;span class="icon"&gt;&lt;/span&gt;&lt;span class="mount-label below"&gt;&lt;b&gt;./src/resources&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;</div>
+      <div class="line add">+       &lt;div class="item volume" data-id="v-grafana" tabindex="0" style="--x:740;--y:954;--w:52;--h:52"&gt;&lt;span class="icon"&gt;&lt;/span&gt;&lt;span class="mount-label below"&gt;&lt;b&gt;grafana-volume&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;</div>
+      <div class="line add">+       &lt;div class="item volume" data-id="v-prometheus" tabindex="0" style="--x:1560;--y:954;--w:52;--h:52"&gt;&lt;span class="icon"&gt;&lt;/span&gt;&lt;span class="mount-label below"&gt;&lt;b&gt;prometheus-volume&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;</div>
+      <div class="line add">+       &lt;div class="item bind" data-id="b-grafana-prov" tabindex="0" style="--x:1400;--y:956;--w:52;--h:42"&gt;&lt;span class="icon"&gt;&lt;/span&gt;&lt;span class="mount-label below"&gt;&lt;b&gt;./docker/grafana/&lt;br&gt;provisioning&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;</div>
+      <div class="line add">+       &lt;div class="item bind" data-id="b-prom-conf" tabindex="0" style="--x:1700;--y:956;--w:52;--h:42"&gt;&lt;span class="icon"&gt;&lt;/span&gt;&lt;span class="mount-label below"&gt;&lt;b&gt;./docker/prometheus/&lt;br&gt;prometheus.yml&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;</div>
+      <div class="line ctx">        &lt;div class="item bind" data-id="b-src" tabindex="0" style="--x:1215;--y:956;--w:52;--h:42"&gt;&lt;span class="icon"&gt;&lt;/span&gt;&lt;span class="mount-label below"&gt;&lt;b&gt;./src&lt;/b&gt;&lt;/span&gt;&lt;/div&gt;</div>
+      <div class="line ctx">  ...</div>
+      <div class="line ctx">      &lt;span&gt;cliente em &lt;b&gt;azul pontilhado&lt;/b&gt; (celular, PC de colega) = outro dispositivo da rede local: usa o IP do seu PC e entra pelas mesmas portas publicadas&lt;/span&gt;</div>
+      <div class="line rem">-     &lt;span&gt;linha tracejada grossa = fronteira da &lt;code&gt;app-network&lt;/code&gt;&lt;/span&gt;</div>
+      <div class="line add">+     &lt;span&gt;&lt;i class="lg-net-edge"&gt;&lt;/i&gt;&lt;code&gt;edge-network&lt;/code&gt; (azul tracejado, embaixo à esquerda): a borda; &lt;i class="lg-net-data"&gt;&lt;/i&gt;&lt;code&gt;data-network&lt;/code&gt; (roxo tracejado, o retângulo maior): os dados. Onde as duas se sobrepõem ficam &lt;b&gt;nodeweb&lt;/b&gt; e &lt;b&gt;nodewebsocket&lt;/b&gt;: containers nas &lt;b&gt;duas&lt;/b&gt; redes, a ponte entre elas&lt;/span&gt;</div>
+      <div class="line ctx">    &lt;/div&gt;</div>
+    </div>
+
+    <div class="diff">
+      <div class="diff-head">assets/rede-docker.js</div>
+      <div class="line ctx">    var EDGES = [</div>
+      <div class="line rem">-     { id: 'b-8080', from: 'browser', to: 'p8080', kind: 'port', points: [[78, 449]] },</div>
+      <div class="line add">+     { id: 'b-8080', from: 'browser', to: 'p8080', kind: 'port', points: [[78, 495]] },</div>
+      <div class="line ctx">      /* clientes de outros dispositivos (rede local): sobem pela esquerda até as portas do host */</div>
+      <div class="line rem">-     { id: 'phone-8080', from: 'phone', to: 'p8080', kind: 'port', points: [[155, 1135], [36, 1135], [36, 500], [110, 500]] },</div>
+      <div class="line rem">-     { id: 'peer-8080', from: 'peer', to: 'p8080', kind: 'port', points: [[445, 1115], [56, 1115], [56, 520], [118, 520]] },</div>
+      <div class="line rem">-     { id: 'peer-5172', from: 'peer', to: 'p5172', kind: 'port', points: [[445, 1115], [56, 1115], [56, 805], [124, 805]] },</div>
+      <div class="line add">+     { id: 'phone-8080', from: 'phone', to: 'p8080', kind: 'port', points: [[155, 1135], [36, 1135], [36, 490], [110, 490]] },</div>
+      <div class="line add">+     { id: 'peer-8080', from: 'peer', to: 'p8080', kind: 'port', points: [[445, 1115], [56, 1115], [56, 505], [118, 505]] },</div>
+      <div class="line add">+     { id: 'peer-5172', from: 'peer', to: 'p5172', kind: 'port', points: [[445, 1115], [56, 1115], [56, 660], [124, 660]] },</div>
+      <div class="line ctx">      /* variantes túnel (espessas): os mesmos caminhos, usados só nos cenários de WebSocket */</div>
+      <div class="line rem">-     { id: 'b-8080-t', from: 'browser', to: 'p8080', kind: 'port', tunnel: true, scenarioOnly: true, points: [[78, 449]] },</div>
+      <div class="line rem">-     { id: 'phone-8080-t', from: 'phone', to: 'p8080', kind: 'port', tunnel: true, scenarioOnly: true, points: [[155, 1135], [36, 1135], [36, 500], [110, 500]] },</div>
+      <div class="line rem">-     { id: 'peer-8080-t', from: 'peer', to: 'p8080', kind: 'port', tunnel: true, scenarioOnly: true, points: [[445, 1115], [56, 1115], [56, 520], [118, 520]] },</div>
+      <div class="line add">+     { id: 'b-8080-t', from: 'browser', to: 'p8080', kind: 'port', tunnel: true, scenarioOnly: true, points: [[78, 495]] },</div>
+      <div class="line add">+     { id: 'phone-8080-t', from: 'phone', to: 'p8080', kind: 'port', tunnel: true, scenarioOnly: true, points: [[155, 1135], [36, 1135], [36, 490], [110, 490]] },</div>
+      <div class="line add">+     { id: 'peer-8080-t', from: 'peer', to: 'p8080', kind: 'port', tunnel: true, scenarioOnly: true, points: [[445, 1115], [56, 1115], [56, 505], [118, 505]] },</div>
+      <div class="line ctx">      { id: '8080-nginx-t', from: 'p8080', to: 'nginx', kind: 'port', tunnel: true, scenarioOnly: true },</div>
+      <div class="line ctx">      { id: '8080-nginx', from: 'p8080', to: 'nginx', kind: 'port' },</div>
+      <div class="line rem">-     { id: 'b-5172', from: 'browser', to: 'p5172', kind: 'port', points: [[78, 795]] },</div>
+      <div class="line add">+     { id: 'b-5172', from: 'browser', to: 'p5172', kind: 'port', points: [[78, 655]] },</div>
+      <div class="line ctx">      { id: '5172-hmr', from: 'p5172', to: 'vitehmr', kind: 'port' },</div>
+      <div class="line ctx">  ...</div>
+      <div class="line ctx">      { id: '15672-rabbit', from: 'p15672', to: 'rabbitmq', kind: 'port' },</div>
+      <div class="line add">+     { id: 'b-grafana', from: 'browser', to: 'p3002', kind: 'port', points: [[78, 885]] },</div>
+      <div class="line add">+     { id: '3002-grafana', from: 'p3002', to: 'grafana', kind: 'port', points: [[160, 1044], [845, 1044], [845, 935]] },</div>
+      <div class="line add">+     { id: 'b-prom', from: 'browser', to: 'p9090', kind: 'port', points: [[78, 956]] },</div>
+      <div class="line add">+     { id: '9090-prom', from: 'p9090', to: 'prometheus', kind: 'port', points: [[66, 1038], [1325, 1038], [1325, 875]] },</div>
+      <div class="line ctx">      { id: 'tools-5672', from: 'tools', to: 'p5672', kind: 'port' },</div>
+      <div class="line ctx">  ...</div>
+      <div class="line ctx"></div>
+      <div class="line rem">-     { id: 'nginx-web', from: 'nginx', to: 'nodeweb', kind: 'net', points: [[1040, 465]] },</div>
+      <div class="line rem">-     { id: 'nginx-ws', from: 'nginx', to: 'nodewebsocket', kind: 'net', tunnel: true, points: [[800, 432], [1877, 432]] },</div>
+      <div class="line rem">-     { id: 'ws-rabbit', persist: true, from: 'nodewebsocket', to: 'rabbitmq', kind: 'net', points: [[1990, 600], [1990, 410], [990, 410]] },</div>
+      <div class="line rem">-     { id: 'web-rabbit', from: 'nodeweb', to: 'rabbitmq', kind: 'net', points: [[1110, 640], [1110, 430]] },</div>
+      <div class="line add">+     { id: 'nginx-web', from: 'nginx', to: 'nodeweb', kind: 'net' },</div>
+      <div class="line add">+     { id: 'nginx-ws', from: 'nginx', to: 'nodewebsocket', kind: 'net', tunnel: true, points: [[700, 540], [700, 660]] },</div>
+      <div class="line add">+     { id: 'ws-rabbit', persist: true, from: 'nodewebsocket', to: 'rabbitmq', kind: 'net', points: [[1075, 660], [1075, 405], [1045, 405]] },</div>
+      <div class="line add">+     { id: 'web-rabbit', from: 'nodeweb', to: 'rabbitmq', kind: 'net', points: [[1030, 490], [1030, 420]] },</div>
+      <div class="line ctx">      { id: 'web-pg', from: 'nodeweb', to: 'postgres', kind: 'net' },</div>
+      <div class="line ctx">      { id: 'web-es', pool: true, from: 'nodeweb', to: 'elasticsearch', kind: 'net' },</div>
+      <div class="line add">+     { id: 'prom-web', from: 'prometheus', to: 'nodeweb', kind: 'net' },</div>
+      <div class="line add">+     { id: 'grafana-prom', from: 'grafana', to: 'prometheus', kind: 'net' },</div>
+      <div class="line add">+     { id: 'grafana-pg', from: 'grafana', to: 'postgres', kind: 'net', points: [[1110, 850], [1110, 400]] },</div>
+      <div class="line add">+     { id: 'web-redis', from: 'nodeweb', to: 'redis', kind: 'net', points: [[1150, 408], [1900, 408]] },</div>
+      <div class="line add">+     { id: 'cmd-redis', from: 'nodecommand', to: 'redis', kind: 'net', points: [[1665, 418], [1930, 418]] },</div>
+      <div class="line add">+     { id: 'worker-redis', from: 'nodeworker', to: 'redis', kind: 'net' },</div>
+      <div class="line ctx">      { id: 'cmd-rabbit', from: 'nodecommand', to: 'rabbitmq', kind: 'net' },</div>
+      <div class="line ctx">  ...</div>
+      <div class="line ctx">      { id: 'm-web-src', from: 'nodeweb', to: 'b-src', kind: 'vol', flow: 'in' , anchor: 'mb-web-src' },</div>
+      <div class="line rem">-     { id: 'm-web-public', from: 'nodeweb', to: 'v-public', kind: 'vol', flow: 'in', points: [[930, 925]], src: 'mb-web-public' },</div>
+      <div class="line add">+     { id: 'm-web-public', from: 'nodeweb', to: 'v-public', kind: 'vol', flow: 'in', src: 'mb-web-public' },</div>
+      <div class="line ctx">      { id: 'm-web-nm', from: 'nodeweb', to: 'v-nodemodules', kind: 'vol', flow: 'in', src: 'mb-web-nm' },</div>
+      <div class="line ctx">  ...</div>
+      <div class="line ctx">      { id: 'm-rabbit-vol', from: 'rabbitmq', to: 'v-rabbitmq', kind: 'vol', flow: 'both', src: 'mb-rabbit-vol' },</div>
+      <div class="line add">+     { id: 'm-grafana-vol', from: 'grafana', to: 'v-grafana', kind: 'vol', flow: 'both', src: 'mb-grafana-vol' },</div>
+      <div class="line add">+     { id: 'm-grafana-prov', from: 'grafana', to: 'b-grafana-prov', kind: 'vol', flow: 'in', anchor: 'mb-grafana-prov' },</div>
+      <div class="line add">+     { id: 'm-prom-vol', from: 'prometheus', to: 'v-prometheus', kind: 'vol', flow: 'both', src: 'mb-prom-vol' },</div>
+      <div class="line add">+     { id: 'm-prom-conf', from: 'prometheus', to: 'b-prom-conf', kind: 'vol', flow: 'in', anchor: 'mb-prom-conf' },</div>
+      <div class="line ctx">      { id: 'm-es-vol', from: 'elasticsearch', to: 'v-elastic', kind: 'vol', flow: 'both', src: 'mb-es-vol' }</div>
+      <div class="line ctx">  ...</div>
+      <div class="line ctx">    var INFO = {</div>
+      <div class="line rem">-     phone: { t: 'Celular (outro dispositivo, mesma rede Wi-Fi)', p: 'Fora do seu PC e fora da app-network. Abre http://IP-DO-SEU-PC:8080/chat (o IP da rede, ex.: 192.168.1.171) e cai na porta 8080 → nginx, igual ao navegador. O túnel WebSocket sobe pelo mesmo caminho. O nginx repassa o IP real em X-Real-IP (é o que aparece na lista de online).' },</div>
+      <div class="line add">+     phone: { t: 'Celular (outro dispositivo, mesma rede Wi-Fi)', p: 'Fora do seu PC e fora das redes edge e data. Abre http://IP-DO-SEU-PC:8080/chat (o IP da rede, ex.: 192.168.1.171) e cai na porta 8080 → nginx, igual ao navegador. O túnel WebSocket sobe pelo mesmo caminho. O nginx repassa o IP real em X-Real-IP (é o que aparece na lista de online).' },</div>
+      <div class="line ctx">      peer: { t: 'PC de colega (mesma rede local)', p: 'Outro computador da sala. Também usa o IP do seu PC: 8080 para o site e o chat, 5172 se você deixar o Vite HMR aberto. Qualquer porta publicada fica alcançável na rede (5672, 15672, 6789 também, se o firewall deixar), mas só a 8080 é a do dia a dia.' },</div>
+      <div class="line ctx">  ...</div>
+      <div class="line ctx">      tools: { t: 'Ferramentas no host', p: 'psql, DBeaver ou um Node rodando fora do Docker. Entram pelas portas publicadas 6789 (Postgres) e 5672 (RabbitMQ).' },</div>
+      <div class="line rem">-     nginx: { t: 'nginx-container', d: [['imagem', 'build docker/nginx (nginx:stable-alpine)'], ['porta', '8080 no host → 80'], ['hostname', 'sem alias (ninguém chama o nginx por dentro)'], ['montagens', 'public-volume → /var/www · ./aulas → /var/www/aulas · ./src/logs/nginx → /var/log/nginx']], p: 'Porta de entrada. try_files procura o arquivo estático em /var/www (public-volume); se não achar, @node faz proxy_pass para nodeweb_host:3000. Para o chat, location /socket.io/ repassa o Upgrade e DISTRIBUI as conexões entre as réplicas do nodewebsocket (upstream): o nginx também entra na escalabilidade.' },</div>
+      <div class="line rem">-     nodeweb: { t: 'nodeweb-container', d: [['imagem', 'build docker/node-web (node:25)'], ['entry point', 'nodemon _web.js (Express na 3000)'], ['hostname', 'nodeweb_host'], ['montagens', './src → /app · public-volume → /app/public · nodemodules-volume → /app/node_modules']], p: 'API, views EJS e busca. Fala com postgres_host:5432, rabbitmq_host:5672 (dispatch de jobs) e elasticsearch_host:9200 (busca). Não tem porta no host: só o nginx chega nele.' },</div>
+      <div class="line rem">-     nodecommand: { t: 'nodecommand-container (efêmero)', d: [['imagem', 'build docker/node-command (node:25)'], ['entry point', 'node _command.js (migrate, seed, create-example-job...)'], ['hostname', 'nodecommand_host'], ['montagens', './src → /app · nodemodules-volume → /app/node_modules'], ['ciclo de vida', 'sobe, executa um comando e some (run --rm)']], p: 'Não fica rodando: docker compose run --rm nodecommand-container migrate cria o container, executa o comando e o remove. Tem acesso a Postgres, RabbitMQ e Elastic (migrations, seeds, carga inicial do índice).' },</div>
+      <div class="line rem">-     nodewebsocket: { t: 'nodewebsocket-container', d: [['imagem', 'build docker/node-websocket (node:25)'], ['entry point', 'nodemon _websocket.js --exchange notifications --port 3001'], ['hostname', 'nodewebsocket_host (porta 3001 só dentro da rede)'], ['montagens', './src → /app · nodemodules-volume → /app/node_modules']], p: 'Mantém os túneis WebSocket (Socket.IO) abertos com os navegadores e é consumer do exchange fanout do RabbitMQ: cada Event do cliente vira publish no exchange, e a cópia que volta na fila exclusiva deste servidor vira io.emit para os clients dele. Só conecta e distribui eventos: o trabalho pesado (como processar uma imagem) vai para o nodeworker pelo mesmo RabbitMQ. Cada instância cria a sua fila dinâmica nos exchanges notifications e results. Sem porta no host: o nginx repassa o Upgrade (location /socket.io/). Escala com --scale nodewebsocket-container=N.' },</div>
+      <div class="line rem">-     nodeworker: { t: 'nodeworker-container', d: [['imagem', 'build docker/node-worker (node:25)'], ['entry point', 'nodemon _worker.js (fila default)'], ['hostname', 'nodeworker_host'], ['montagens', './src → /app · nodemodules-volume → /app/node_modules']], p: 'Consome a fila do RabbitMQ e executa os jobs de app/Jobs, como o SyncUserElasticJob: lê o usuário no Postgres e grava no Elasticsearch. Também recebe o trabalho pesado que o websocket não deve fazer (ex.: processar a imagem enviada no chat, fila images) e publica o resultado em outro exchange.' },</div>
+      <div class="line add">+     nginx: { t: 'nginx-container', d: [['imagem', 'build docker/nginx (nginx:stable-alpine)'], ['porta', '8080 no host → 80'], ['redes', 'edge-network'], ['hostname', 'sem alias (ninguém chama o nginx por dentro)'], ['montagens', 'public-volume → /var/www · ./aulas → /var/www/aulas · ./src/logs/nginx → /var/log/nginx']], p: 'Porta de entrada. try_files procura o arquivo estático em /var/www (public-volume); se não achar, @node faz proxy_pass para nodeweb_host:3000. Para o chat, location /socket.io/ repassa o Upgrade e DISTRIBUI as conexões entre as réplicas do nodewebsocket (upstream): o nginx também entra na escalabilidade.' },</div>
+      <div class="line add">+     nodeweb: { t: 'nodeweb-container', d: [['imagem', 'build docker/node-web (node:25)'], ['entry point', 'nodemon _web.js (Express na 3000)'], ['redes', 'edge-network + data-network (ponte)'], ['hostname', 'nodeweb_host'], ['montagens', './src → /app · public-volume → /app/public · nodemodules-volume → /app/node_modules']], p: 'API, views EJS e busca. Fala com postgres_host:5432, rabbitmq_host:5672 (dispatch de jobs), elasticsearch_host:9200 (busca) e redis_host:6379 (cache do relatório). Expõe /metrics (prom-client) para o Prometheus coletar: o nginx devolve 404 a esse caminho de fora. Não tem porta no host: só o nginx chega nele.' },</div>
+      <div class="line add">+     nodecommand: { t: 'nodecommand-container (efêmero)', d: [['imagem', 'build docker/node-command (node:25)'], ['entry point', 'node _command.js (migrate, seed, create-example-job...)'], ['redes', 'data-network'], ['hostname', 'nodecommand_host'], ['montagens', './src → /app · nodemodules-volume → /app/node_modules'], ['ciclo de vida', 'sobe, executa um comando e some (run --rm)']], p: 'Não fica rodando: docker compose run --rm nodecommand-container migrate cria o container, executa o comando e o remove. Tem acesso a Postgres, RabbitMQ, Elastic e Redis (migrations, seeds, carga inicial do índice, limpar o cache).' },</div>
+      <div class="line add">+     nodewebsocket: { t: 'nodewebsocket-container', d: [['imagem', 'build docker/node-websocket (node:25)'], ['entry point', 'nodemon _websocket.js --exchange notifications --port 3001'], ['redes', 'edge-network + data-network (ponte)'], ['hostname', 'nodewebsocket_host (porta 3001 só dentro da rede)'], ['montagens', './src → /app · nodemodules-volume → /app/node_modules']], p: 'Mantém os túneis WebSocket (Socket.IO) abertos com os navegadores e é consumer do exchange fanout do RabbitMQ: cada Event do cliente vira publish no exchange, e a cópia que volta na fila exclusiva deste servidor vira io.emit para os clients dele. Só conecta e distribui eventos: o trabalho pesado (como processar uma imagem) vai para o nodeworker pelo mesmo RabbitMQ. Cada instância cria a sua fila dinâmica nos exchanges notifications e results. Sem porta no host: o nginx repassa o Upgrade (location /socket.io/). Escala com --scale nodewebsocket-container=N.' },</div>
+      <div class="line add">+     nodeworker: { t: 'nodeworker-container', d: [['imagem', 'build docker/node-worker (node:25)'], ['entry point', 'nodemon _worker.js (fila default)'], ['redes', 'data-network'], ['hostname', 'nodeworker_host'], ['montagens', './src → /app · nodemodules-volume → /app/node_modules']], p: 'Consome a fila do RabbitMQ e executa os jobs de app/Jobs, como o SyncUserElasticJob: lê o usuário no Postgres e grava no Elasticsearch. Também fala com o Redis (por exemplo, invalidar o cache). Também recebe o trabalho pesado que o websocket não deve fazer (ex.: processar a imagem enviada no chat, fila images) e publica o resultado em outro exchange. No compose há um segundo container da MESMA imagem, o nodeworkersavemessage-container, que consome a fila save-message: o SaveMessageJob grava cada mensagem do chat (ip, name, message, date) no Postgres.' },</div>
+      <div class="line ctx">      vitehmr: { t: 'nodevitehmr-container', d: [['imagem', 'build docker/node-vite-hmr (node:25)'], ['porta', '5172 no host → 5172'], ['montagens', './src/resources → /app/resources · nodemodules-volume → /app/node_modules']], p: 'Servidor de desenvolvimento do Vite com HMR: o navegador abre localhost:5172 e vê as mudanças do TypeScript na hora.' },</div>
+      <div class="line ctx">      vitecompiler: { t: 'nodevitecompiler-container', d: [['imagem', 'build docker/node24-vite-compiler (node:24)'], ['entry point', 'vite build --watch'], ['montagens', './src/resources → /app/resources · public-volume → /app/public · nodemodules-volume → /app/node_modules']], p: 'Não é servidor: compila resources/ (do seu PC) para public/ (public-volume), que o nginx serve e o nodeweb lê (manifest do helper vite()).' },</div>
+      <div class="line rem">-     postgres: { t: 'postgres-container', d: [['imagem', 'postgres:18'], ['porta', '6789 no host → 5432'], ['hostname', 'postgres_host'], ['montagens', 'postgres-volume → /var/lib/postgresql · ./src/docker/postgres/init → /docker-entrypoint-initdb.d']], p: 'Fonte da verdade. Os dados vivem no postgres-volume e sobrevivem a docker compose down.' },</div>
+      <div class="line rem">-     rabbitmq: { t: 'rabbitmq-container', d: [['imagem', 'rabbitmq:3.13.1-management-alpine'], ['portas', '5672 → 5672 (AMQP) · 15672 → 15672 (painel)'], ['hostname', 'rabbitmq_host'], ['montagens', 'rabbitmq-volume → /var/lib/rabbitmq']], p: 'A fila. O nodeweb publica (dispatch), o worker consome. O painel em localhost:15672 mostra filas, mensagens e consumers.' },</div>
+      <div class="line rem">-     elasticsearch: { t: 'elasticsearch-container', d: [['imagem', 'elasticsearch:9.5.5'], ['porta', 'nenhuma no host'], ['hostname', 'elasticsearch_host (porta 9200 só dentro da rede)'], ['montagens', 'elastic-volume → /usr/share/elasticsearch/data']], p: 'Banco de busca. Sem bloco ports: o navegador nunca fala com ele. Só nodeweb, nodecommand e nodeworker, pela app-network.' },</div>
+      <div class="line add">+     grafana: { t: 'grafana-container', d: [['imagem', 'grafana/grafana:12.1.0'], ['redes', 'edge-network + data-network (ponte)'], ['porta', '3002 → 3000 (GRAFANA_PORT)'], ['hostname', 'grafana_host'], ['montagens', 'grafana-volume → /var/lib/grafana · ./docker/grafana/provisioning → /etc/grafana/provisioning']], p: 'Só MOSTRA: não guarda métrica nenhuma. Sobe com duas fontes de dados prontas (provisioning): o Prometheus (req/s, p95, hit ratio do cache) e o Postgres (a tabela messages: o log das mensagens do chat e as mensagens por minuto). Login: admin / GRAFANA_PASSWORD (padrão admin). Fica nas duas redes: na borda para você abrir no navegador, nos dados para alcançar o Prometheus e o Postgres.' },</div>
+      <div class="line add">+     prometheus: { t: 'prometheus-container', d: [['imagem', 'prom/prometheus:v3.5.0'], ['redes', 'data-network'], ['porta', '9090 → 9090 (PROMETHEUS_PORT)'], ['hostname', 'prometheus_host'], ['montagens', 'prometheus-volume → /prometheus · ./docker/prometheus/prometheus.yml → /etc/prometheus/prometheus.yml']], p: 'COLETA e GUARDA as métricas: a cada 5 s faz GET /metrics no nodeweb (nodeweb_host:3000, pull, pela data-network, sem passar pelo nginx) e grava cada valor com a hora. Guarda séries temporais; o Grafana consulta com PromQL. A interface em localhost:9090 (Status &gt; Targets) mostra se o nodeweb está UP.' },</div>
+      <div class="line add">+     redis: { t: 'redis-container', d: [['imagem', 'redis:7.4-alpine'], ['porta', 'nenhuma no host'], ['redes', 'data-network'], ['hostname', 'redis_host (porta 6379 só dentro da rede)'], ['montagens', 'nenhuma: é cache, se perde e se refaz']], p: 'O cache em memória. O nodeweb guarda ali o ranking do chat (cache-aside) com TTL de 30 s, e a flag cache:ativo que liga e desliga o cache. Sem bloco ports e sem volume: só o nodeweb o alcança, pela data-network.' },</div>
+      <div class="line add">+     postgres: { t: 'postgres-container', d: [['imagem', 'postgres:18'], ['porta', '6789 no host → 5432'], ['redes', 'data-network'], ['hostname', 'postgres_host'], ['montagens', 'postgres-volume → /var/lib/postgresql · ./src/docker/postgres/init → /docker-entrypoint-initdb.d']], p: 'Fonte da verdade. Os dados vivem no postgres-volume e sobrevivem a docker compose down.' },</div>
+      <div class="line add">+     rabbitmq: { t: 'rabbitmq-container', d: [['imagem', 'rabbitmq:3.13.1-management-alpine'], ['portas', '5672 → 5672 (AMQP) · 15672 → 15672 (painel)'], ['redes', 'data-network'], ['hostname', 'rabbitmq_host'], ['montagens', 'rabbitmq-volume → /var/lib/rabbitmq']], p: 'A fila. O nodeweb publica (dispatch), o worker consome. O painel em localhost:15672 mostra filas, mensagens e consumers.' },</div>
+      <div class="line add">+     elasticsearch: { t: 'elasticsearch-container', d: [['imagem', 'elasticsearch:9.5.5'], ['porta', 'nenhuma no host'], ['redes', 'data-network'], ['hostname', 'elasticsearch_host (porta 9200 só dentro da rede)'], ['montagens', 'elastic-volume → /usr/share/elasticsearch/data']], p: 'Banco de busca. Sem bloco ports: o navegador nunca fala com ele. Só nodeweb, nodecommand e nodeworker, pela data-network.' },</div>
+      <div class="line ctx">      p8080: { t: 'Porta 8080 → 80', p: 'ports: "8080:80". O que chega na 8080 do seu PC vai para a 80 do nginx: o site inteiro é http://localhost:8080.' },</div>
+      <div class="line ctx">      p5172: { t: 'Porta 5172 → 5172', p: 'ports: "5172:5172" do vite-hmr. Servidor de desenvolvimento com HMR.' },</div>
+      <div class="line add">+     p3002: { t: 'Porta 3002 → 3000', p: 'ports: "${GRAFANA_PORT:-3002}:3000". Do host (e de quem estiver na sua rede), o Grafana abre em http://localhost:3002 (admin / admin por padrão).' },</div>
+      <div class="line add">+     p9090: { t: 'Porta 9090 → 9090', p: 'ports: "${PROMETHEUS_PORT:-9090}:9090". A interface do Prometheus em http://localhost:9090: Status &gt; Targets mostra o nodeweb, e a aba Graph aceita PromQL.' },</div>
+      <div class="line add">+     'v-grafana': { t: 'grafana-volume (volume interno)', p: 'O banco do próprio Grafana (usuários, preferências), em /var/lib/grafana. Os dashboards NÃO dependem dele: vêm do provisioning.' },</div>
+      <div class="line add">+     'v-prometheus': { t: 'prometheus-volume (volume interno)', p: 'As séries temporais coletadas, em /prometheus: sobrevivem a docker compose down.' },</div>
+      <div class="line add">+     'b-grafana-prov': { t: './docker/grafana/provisioning (pasta do seu PC)', p: 'As fontes de dados (Prometheus e Postgres) e o dashboard Cache e Observabilidade em JSON: o Grafana sobe já configurado, sem clicar em nada.' },</div>
+      <div class="line add">+     'b-prom-conf': { t: './docker/prometheus/prometheus.yml (arquivo do seu PC)', p: 'Diz ao Prometheus quem coletar: o job nodeweb em nodeweb_host:3000, a cada 5 s.' },</div>
+      <div class="line ctx">      p5672: { t: 'Porta 5672 → 5672', p: 'AMQP do RabbitMQ publicado no host, para quem roda Node fora do Docker. Dentro da rede, o acesso é rabbitmq_host:5672.' },</div>
+      <div class="line ctx">  ...</div>
+      <div class="line ctx">        { e: ['nginx-ws', 'ws-rabbit'], x: 'O aluno envia chat:message pelo túnel. O Event não entrega nada na tela: o nodewebsocket publica a mensagem no exchange fanout notifications do RabbitMQ (rabbitmq_host:5672).' },</div>
+      <div class="line rem">-       { e: ['ws-rabbit', 'nginx-ws', '8080-nginx-t', 'b-8080-t', 'phone-8080-t', 'peer-8080-t'], x: 'O exchange copia a mensagem para a fila dinâmica de CADA instância do nodewebsocket (cada uma cria a sua ao subir). Cada instância consome a sua fila e faz io.emit: a mensagem volta pelo túnel (nodewebsocket → nginx → navegador) a todos os alunos conectados nela, inclusive o autor.' }</div>
+      <div class="line add">+       { e: ['ws-rabbit', 'nginx-ws', '8080-nginx-t', 'b-8080-t', 'phone-8080-t', 'peer-8080-t'], x: 'O exchange copia a mensagem para a fila dinâmica de CADA instância do nodewebsocket (cada uma cria a sua ao subir). Cada instância consome a sua fila e faz io.emit: a mensagem volta pelo túnel (nodewebsocket → nginx → navegador) a todos os alunos conectados nela, inclusive o autor.' },</div>
+      <div class="line add">+       { e: ['ws-rabbit', 'worker-rabbit', 'worker-pg'], x: 'Depois de notificar, o Event também faz o dispatch do SaveMessageJob na fila save-message do RabbitMQ (rabbitmq_host:5672) e segue: o websocket não grava nada. Um worker (container nodeworkersavemessage, mesma imagem do nodeworker) consome essa fila e grava ip, name, message e date na tabela messages do Postgres (postgres_host:5432), fora do túnel.' }</div>
+      <div class="line ctx">      ]},</div>
+      <div class="line ctx">  ...</div>
+      <div class="line ctx">        { e: ['worker-rabbit', 'ws-rabbit', 'nginx-ws', '8080-nginx-t', 'b-8080-t', 'phone-8080-t', 'peer-8080-t'], x: 'Terminou: o worker publica o resultado em OUTRO exchange, o results. Cada instância do nodewebsocket tem a sua fila dinâmica ligada a esse exchange: o fanout copia o resultado para todas, e cada uma faz io.emit aos seus clients pelo túnel. Todos os alunos veem a imagem, e o chat nunca parou.' }</div>
+      <div class="line add">+     ]},</div>
+      <div class="line add">+     cache: { t: 'HTTP API · relatório com cache (GET /api/relatorio)', steps: [</div>
+      <div class="line add">+       { e: ['b-8080', 'phone-8080', 'peer-8080', '8080-nginx', 'nginx-web', 'web-redis'], x: 'O botão "Disparar 50 requisições" do chat faz GET /api/relatorio: entra pela 8080, o nginx passa para nodeweb_host:3000 e o controller pergunta primeiro ao Redis (redis_host:6379), o cache-aside. Se a resposta já está lá (HIT), volta direto da memória com X-Cache: HIT e o Postgres nem é tocado.' },</div>
+      <div class="line add">+       { e: ['web-redis', 'web-pg'], x: 'MISS (ou cache desligado): o controller consulta o Postgres (GROUP BY na tabela messages, o ranking de quem mais falou no chat), grava o resultado no Redis com TTL de 30 s e responde com X-Cache: MISS. A próxima requisição dentro da janela de 30 s já é HIT.' },</div>
+      <div class="line add">+       { e: ['nginx-web', '8080-nginx', 'b-8080', 'phone-8080', 'peer-8080'], x: 'A resposta volta nodeweb → nginx → navegador. Com a sala inteira clicando, o cache faz o Postgres trabalhar só uma vez por janela de TTL em vez de uma vez por requisição.' }</div>
+      <div class="line add">+     ]},</div>
+      <div class="line add">+     observabilidade: { t: 'Observabilidade (Prometheus + Grafana)', steps: [</div>
+      <div class="line add">+       { e: ['prom-web'], x: 'O nodeweb só EXPÕE um texto em /metrics (prom-client: duração das requisições e acertos/erros do cache). O Prometheus vai BUSCAR (pull) esse texto no nodeweb a cada 5 s, direto pela data-network (nodeweb_host:3000), e guarda cada valor com a hora. O nginx não está no caminho: de fora, /metrics devolve 404.' },</div>
+      <div class="line add">+       { e: ['b-grafana', '3002-grafana', 'grafana-prom', 'grafana-pg'], x: 'Você abre o Grafana em localhost:3002 (porta publicada 3002 → 3000). Ele NÃO guarda nada: consulta o Prometheus com PromQL (req/s, latência p95, hit ratio do cache) e o Postgres (a tabela messages: o log das mensagens do chat e as mensagens por minuto). O Grafana está nas duas redes: na borda para você abrir, nos dados para alcançar os dois.' },</div>
+      <div class="line add">+       { e: ['b-prom', '9090-prom'], x: 'A interface do Prometheus em localhost:9090 (porta 9090 → 9090): Status &gt; Targets mostra o nodeweb UP, e a aba Graph executa PromQL na mão.' }</div>
+      <div class="line ctx">      ]},</div>
+      <div class="line ctx">  ...</div>
+      <div class="line ctx">      vitecompiler: ['m-compiler-nm'],</div>
+      <div class="line rem">-     nodewebsocket: ['m-ws-nm']</div>
+      <div class="line add">+     nodewebsocket: ['m-ws-nm'],</div>
+      <div class="line add">+     grafana: ['m-grafana-vol'],</div>
+      <div class="line add">+     prometheus: ['m-prom-vol']</div>
+      <div class="line ctx">    };</div>
+    </div>
+
+    <div class="diff">
+      <div class="diff-head">assets/rede-docker.css</div>
+      <div class="line ctx">    --net-border: #27313a;</div>
+      <div class="line add">+   --net-edge: #2b6cb0;</div>
+      <div class="line add">+   --net-data: #7c3aed;</div>
+      <div class="line ctx">    --lan-bg: #eef3f8;</div>
+      <div class="line ctx">  ...</div>
+      <div class="line ctx">    --net-border: #a9b8c9;</div>
+      <div class="line add">+   --net-edge: #7db3f0;</div>
+      <div class="line add">+   --net-data: #c4a1ff;</div>
+      <div class="line ctx">    --lan-bg: #131d29;</div>
+      <div class="line ctx">  ...</div>
+      <div class="line ctx">  }</div>
+      <div class="line add">+ .stage &gt; svg.netshape{ left: 0; top: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }</div>
+      <div class="line add">+ .net-data{ fill: color-mix(in srgb, var(--net-data) 9%, transparent); stroke: var(--net-data); stroke-width: 3; stroke-dasharray: 12 8; stroke-linejoin: round; }</div>
+      <div class="line add">+ .net-edge{ fill: color-mix(in srgb, var(--net-edge) 9%, transparent); stroke: var(--net-edge); stroke-width: 3; stroke-dasharray: 12 8; }</div>
+      <div class="line add">+ .net-label{ font-weight: 700; font-size: 22px; }</div>
+      <div class="line add">+ .net-label.edge{ fill: var(--net-edge); }</div>
+      <div class="line add">+ .net-label.data{ fill: var(--net-data); }</div>
+      <div class="line add">+ .lg-net-edge, .lg-net-data{ display: inline-block; width: 22px; height: 12px; border: 2px dashed; border-radius: 4px; margin-right: 6px; vertical-align: -1px; }</div>
+      <div class="line add">+ .lg-net-edge{ border-color: var(--net-edge); }</div>
+      <div class="line add">+ .lg-net-data{ border-color: var(--net-data); }</div>
+      <div class="line ctx">  .stage &gt; svg.wires{ left: 0; top: 0; width: 100%; height: 100%; z-index: 3; pointer-events: none; overflow: visible; }</div>
+    </div>
+
+    <div class="why">
+      <div class="why-card">
+        <h4>Quem fala com o Redis</h4>
+        <p>nodeweb, nodecommand e nodeworker (fios novos), todos pela data-network; sem porta no host e sem volume: o cache se perde e se refaz.</p>
+      </div>
+      <div class="why-card">
+        <h4>Duas redes desenhadas</h4>
+        <p>Dois retângulos SVG (.netshape) com preenchimento translúcido: onde se sobrepõem aparece quem está nas duas redes. Para caberem em retângulos os containers foram realocados: a coluna da borda ficou vertical (nginx, vite-hmr, vite-compiler), a ponte (nodeweb e nodewebsocket) ocupa a faixa de sobreposição, e command e worker ficam à direita dela. As portas 8080 e 5172 e o public-volume foram realinhados.</p>
+      </div>
+      <div class="why-card">
+        <h4>Fios refeitos</h4>
+        <p>Os fios com pontos manuais (browser, celular e PC de colega até a 8080 e a 5172; túnel do nginx; websocket e nodeweb até o RabbitMQ; nodeweb e command até o Redis) ganharam rotas novas para não atravessar os containers.</p>
+      </div>
+      <div class="why-card">
+        <h4>Cenário do chat</h4>
+        <p>Depois de notificar, o Event despacha o SaveMessageJob; o worker da fila save-message grava no Postgres. O worker aparece no desenho como o nodeworker (mesma imagem, outro container no compose).</p>
+      </div>
+      <div class="why-card">
+        <h4>Cenário novo</h4>
+        <p>GET /api/relatorio: nginx, nodeweb, Redis (HIT) ou Postgres (MISS) e a resposta de volta.</p>
+      </div>
+    </div>
+
+    <div class="ok">
+      <strong><i class="fa-solid fa-circle-check"></i> Conferido:</strong>
+      <p><code class="inline">node --check</code> no JS e render conferido numa captura do Chrome (as duas redes, o Redis e os fios aparecem). Os cenários animados não foram clicados um a um. O worker da fila save-message não tem caixa própria.</p>
+    </div>
+  </div>
+
+  <!-- ETAPA 8 -->
+  <div class="entry" id="etapa-8">
+    <div class="entry-dot">8</div>
+    <div class="entry-date">Etapa 8 · Docker</div>
+    <h2>Dois networks: edge-network (borda) e data-network (dados)</h2>
+    <p class="sub">Em vez de uma app-network em que todo container enxerga todos, a borda e os dados ficam em redes separadas; nodeweb e nodewebsocket ficam nas duas como ponte.</p>
+
+    <div class="diff">
+      <div class="diff-head">docker-compose.yml</div>
+      <div class="line ctx">      restart: unless-stopped</div>
+      <div class="line ctx">      networks:</div>
+      <div class="line rem">-       app-network:</div>
+      <div class="line rem">-         aliases:</div>
+      <div class="line rem">-             - nodeweb_host</div>
+      <div class="line add">+       edge-network:   # o nginx chega por aqui</div>
+      <div class="line add">+         aliases:</div>
+      <div class="line add">+           - nodeweb_host</div>
+      <div class="line add">+       data-network:   # e daqui alcança os dados: a ponte entre as duas redes</div>
+      <div class="line add">+         aliases:</div>
+      <div class="line add">+           - nodeweb_host</div>
+      <div class="line ctx"></div>
+      <div class="line ctx">    #NODE COMMAND</div>
+      <div class="line ctx">  ...</div>
+      <div class="line ctx">        REDIS_PORT: 6379</div>
+      <div class="line ctx">      networks:</div>
+      <div class="line rem">-       app-network:</div>
+      <div class="line add">+       data-network:</div>
+      <div class="line ctx">          aliases:</div>
+      <div class="line ctx">              - nodecommand_host</div>
+      <div class="line ctx">  ...</div>
+      <div class="line ctx">      restart: unless-stopped</div>
+      <div class="line ctx">      networks:</div>
+      <div class="line rem">-       app-network:</div>
+      <div class="line add">+       data-network:</div>
+      <div class="line ctx">          aliases:</div>
+      <div class="line ctx">            - nodeworker_host</div>
+      <div class="line ctx">  ...</div>
+      <div class="line ctx">      restart: unless-stopped</div>
+      <div class="line ctx">      networks:</div>
+      <div class="line rem">-       app-network:</div>
+      <div class="line add">+       data-network:</div>
+      <div class="line ctx">          aliases:</div>
+      <div class="line ctx">            - nodeworkersavemessage_host</div>
+      <div class="line ctx">  ...</div>
+      <div class="line ctx">      restart: unless-stopped</div>
+      <div class="line ctx">      networks:</div>
+      <div class="line rem">-       app-network:</div>
+      <div class="line add">+       edge-network:   # o nginx chega por aqui</div>
+      <div class="line add">+         aliases:</div>
+      <div class="line add">+           - nodewebsocket_host</div>
+      <div class="line add">+       data-network:   # e daqui alcança os dados: a ponte entre as duas redes</div>
+      <div class="line ctx">          aliases:</div>
+      <div class="line ctx">            - nodewebsocket_host</div>
+      <div class="line ctx">  ...</div>
+      <div class="line ctx">        - "5172:5172"</div>
+      <div class="line ctx">      networks:</div>
+      <div class="line rem">-       - app-network</div>
+      <div class="line add">+       - edge-network   # só a borda: não enxerga o banco</div>
+      <div class="line ctx"></div>
+      <div class="line ctx">    #NODE VITE COMPILER</div>
+      <div class="line ctx">  ...</div>
+      <div class="line ctx">        - IS_CONTAINER=TRUE</div>
+      <div class="line ctx">      networks:</div>
+      <div class="line rem">-       - app-network</div>
+      <div class="line add">+       - edge-network   # só a borda: não enxerga o banco</div>
+      <div class="line ctx"></div>
+      <div class="line ctx">    #NGINX</div>
+      <div class="line ctx">  ...</div>
+      <div class="line ctx">        - nodewebsocket-container</div>
+      <div class="line ctx">      networks:</div>
+      <div class="line rem">-       - app-network</div>
+      <div class="line add">+       - edge-network   # só a borda: não enxerga o banco</div>
+      <div class="line ctx"></div>
+      <div class="line ctx">    #POSTGRES</div>
+      <div class="line ctx">  ...</div>
+      <div class="line ctx">        - ./src/docker/postgres/init:/docker-entrypoint-initdb.d</div>
+      <div class="line ctx">      networks:</div>
+      <div class="line rem">-       app-network:</div>
+      <div class="line add">+       data-network:</div>
+      <div class="line ctx">          aliases:</div>
+      <div class="line ctx">            - postgres_host</div>
+      <div class="line ctx">  ...</div>
+      <div class="line ctx">        - xpack.security.enabled=false # Sem usuário/senha/HTTPS: só porque NÃO tem porta exposta</div>
+      <div class="line ctx">        - ES_JAVA_OPTS=-Xms512m -Xmx512m # Limita a memória da JVM</div>
+      <div class="line rem">-     # Sem "ports": só a rede interna (app-network) alcança o Elasticsearch</div>
+      <div class="line add">+     # Sem "ports": só a rede interna (data-network) alcança o Elasticsearch</div>
+      <div class="line ctx">      volumes:</div>
+      <div class="line ctx">        - elastic-volume:/usr/share/elasticsearch/data</div>
+      <div class="line ctx">      networks:</div>
+      <div class="line rem">-       app-network:</div>
+      <div class="line add">+       data-network:</div>
+      <div class="line ctx">          aliases:</div>
+      <div class="line ctx">            - elasticsearch_host</div>
+      <div class="line ctx">  ...</div>
+      <div class="line ctx">        - rabbitmq-volume:/var/lib/rabbitmq</div>
+      <div class="line ctx">      networks:</div>
+      <div class="line rem">-       app-network:</div>
+      <div class="line add">+       data-network:</div>
+      <div class="line ctx">          aliases:</div>
+      <div class="line ctx">            - rabbitmq_host</div>
+      <div class="line ctx">  ...</div>
+      <div class="line ctx">      restart: unless-stopped</div>
+      <div class="line ctx">      networks:</div>
+      <div class="line rem">-       app-network:</div>
+      <div class="line add">+       data-network:</div>
+      <div class="line ctx">          aliases:</div>
+      <div class="line ctx">            - redis_host</div>
+      <div class="line ctx"></div>
+      <div class="line ctx">  networks:</div>
+      <div class="line rem">-   app-network:</div>
+      <div class="line add">+   # Borda: o que fala com o navegador (nginx, Vite) e a ponte (nodeweb, nodewebsocket)</div>
+      <div class="line add">+   edge-network:</div>
+      <div class="line add">+     driver: bridge</div>
+      <div class="line add">+   # Dados: bancos, cache, fila, workers e comandos; sem porta publicada, só quem está aqui alcança</div>
+      <div class="line add">+   data-network:</div>
+      <div class="line ctx">      driver: bridge</div>
+      <div class="line ctx"></div>
+    </div>
+
+    <div class="why">
+      <div class="why-card">
+        <h4>Menor privilégio</h4>
+        <p>O nginx e o Vite vivem só na <code class="inline">edge-network</code>; Postgres, Elasticsearch, RabbitMQ, Redis, os workers e o nodecommand só na <code class="inline">data-network</code>. O nginx não resolve <code class="inline">postgres_host</code>.</p>
+      </div>
+      <div class="why-card">
+        <h4>A ponte</h4>
+        <p><code class="inline">nodeweb</code> e <code class="inline">nodewebsocket</code> entram nas duas redes (com o mesmo alias em cada): o nginx os alcança pela borda e eles alcançam os dados.</p>
+      </div>
+      <div class="why-card">
+        <h4>Network não é porta publicada</h4>
+        <p>As portas (<code class="inline">6789→5432</code>, <code class="inline">5672</code>, <code class="inline">15672</code>, <code class="inline">8080</code>, <code class="inline">5172</code>) CONTINUAM publicadas: o <code class="inline">ports:</code> expõe no host independente do network. A rede isola o tráfego entre containers; para fechar o banco para fora do PC seria preciso tirar o <code class="inline">ports:</code>.</p>
+      </div>
+      <div class="why-card">
+        <h4>Nome e rede</h4>
+        <p>O alias vale por network: quem não compartilha rede com um container não resolve o nome dele.</p>
+      </div>
+      <div class="why-card">
+        <h4>Pegadinha</h4>
+        <p>Containers que já existem precisam ser recriados (<code class="inline">docker compose up -d --build</code>); redes antigas somem com <code class="inline">docker compose down</code>.</p>
+      </div>
+    </div>
+
+    <div class="ok">
+      <strong><i class="fa-solid fa-circle-check"></i> Conferido:</strong>
+      <p>YAML do compose válido (PyYAML): cada serviço lido com as redes esperadas (nodeweb e nodewebsocket nas duas). <code class="inline">docker compose up</code> NÃO foi executado,. O diagrama da rede Docker foi atualizado com as duas redes (etapa 7).</p>
+    </div>
+  </div>
+
+  <!-- ETAPA 9 -->
+  <div class="entry" id="etapa-9">
+    <div class="entry-dot">9</div>
+    <div class="entry-date">Etapa 9 · Observabilidade</div>
+    <h2>Métricas no nodeweb: prom-client, histograma, /metrics e o bloqueio no nginx</h2>
+    <p class="sub">O nodeweb só EXPÕE números num texto em /metrics: a duração de cada requisição (histograma) e os acertos e erros do cache (contador). Quem busca é o Prometheus; quem desenha é o Grafana.</p>
+
+    <div class="diff">
+      <div class="diff-head">src/utils/metrics.js</div>
+      <div class="line add">+ import { Registry, Histogram, Counter, collectDefaultMetrics } from 'prom-client'</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ /**</div>
+      <div class="line add">+  * Métricas do nodeweb, no formato que o Prometheus lê (GET /metrics).</div>
+      <div class="line add">+  * O nodeweb só EXPÕE os números; quem busca (pull) e guarda é o Prometheus, quem desenha é o Grafana.</div>
+      <div class="line add">+  */</div>
+      <div class="line add">+ export const register = new Registry()</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ // Métricas do próprio processo Node: memória, CPU, event loop</div>
+      <div class="line add">+ collectDefaultMetrics({ register })</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ // Duração de cada requisição HTTP: o histograma guarda a contagem por faixa de tempo (buckets),</div>
+      <div class="line add">+ // e é daí que o Grafana calcula o p95</div>
+      <div class="line add">+ export const httpDuration = new Histogram({</div>
+      <div class="line add">+     name: 'http_request_duration_seconds',</div>
+      <div class="line add">+     help: 'Duração das requisições HTTP em segundos',</div>
+      <div class="line add">+     labelNames: ['method', 'route', 'status'],</div>
+      <div class="line add">+     buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5],</div>
+      <div class="line add">+     registers: [register]</div>
+      <div class="line add">+ })</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ // Acertos (hit) e erros (miss) do cache do relatório</div>
+      <div class="line add">+ export const cacheRequests = new Counter({</div>
+      <div class="line add">+     name: 'cache_requests_total',</div>
+      <div class="line add">+     help: 'Consultas ao cache do relatório, por resultado (hit ou miss)',</div>
+      <div class="line add">+     labelNames: ['result'],</div>
+      <div class="line add">+     registers: [register]</div>
+      <div class="line add">+ })</div>
+    </div>
+
+    <div class="diff">
+      <div class="diff-head">src/app/Http/Middlewares/MetricsMiddleware.js</div>
+      <div class="line add">+ import { httpDuration } from '../../../utils/metrics.js'</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ /**</div>
+      <div class="line add">+  * Mede a duração de cada requisição e guarda no histograma (method, route, status).</div>
+      <div class="line add">+  * O label route é o padrão da rota (/api/relatorio), nunca a URL com ids: cada valor novo de label</div>
+      <div class="line add">+  * vira uma série nova no Prometheus.</div>
+      <div class="line add">+  */</div>
+      <div class="line add">+ export default function MetricsMiddleware(request, response, next) {</div>
+      <div class="line add">+     const stopTimer = httpDuration.startTimer()</div>
+      <div class="line add">+ </div>
+      <div class="line add">+     response.on('finish', () =&gt; {</div>
+      <div class="line add">+         const route = request.route ? request.baseUrl + request.route.path : 'outras'</div>
+      <div class="line add">+ </div>
+      <div class="line add">+         stopTimer({</div>
+      <div class="line add">+             method: request.method,</div>
+      <div class="line add">+             route: route,</div>
+      <div class="line add">+             status: response.statusCode</div>
+      <div class="line add">+         })</div>
+      <div class="line add">+     })</div>
+      <div class="line add">+ </div>
+      <div class="line add">+     return next()</div>
+      <div class="line add">+ }</div>
+    </div>
+
+    <div class="diff">
+      <div class="diff-head">src/app/Http/Controllers/MetricsController.js</div>
+      <div class="line add">+ import { register } from '../../../utils/metrics.js'</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ /**</div>
+      <div class="line add">+  * GET /metrics: o texto que o Prometheus busca a cada 5 s. NÃO é público: o nginx responde 404 a quem vem de fora</div>
+      <div class="line add">+  * (location = /metrics) e o Prometheus coleta direto no nodeweb, pela data-network.</div>
+      <div class="line add">+  */</div>
+      <div class="line add">+ export default async function MetricsController(request, response) {</div>
+      <div class="line add">+     response.set('Content-Type', register.contentType)</div>
+      <div class="line add">+ </div>
+      <div class="line add">+     return response.end(await register.metrics())</div>
+      <div class="line add">+ }</div>
+    </div>
+
+    <div class="diff">
+      <div class="diff-head">src/routes/router.js</div>
+      <div class="line ctx">  import LoginController from '../app/Http/Controllers/LoginController.js';</div>
+      <div class="line add">+ import ReportController from '../app/Http/Controllers/ReportController.js';</div>
+      <div class="line add">+ import MetricsController from '../app/Http/Controllers/MetricsController.js';</div>
+      <div class="line add">+ import MetricsMiddleware from '../app/Http/Middlewares/MetricsMiddleware.js';</div>
+      <div class="line add">+ import ToggleCacheController from '../app/Http/Controllers/ToggleCacheController.js';</div>
+      <div class="line add">+ import AdminMiddleware from '../app/Http/Middlewares/AdminMiddleware.js';</div>
+      <div class="line ctx">  import AuthMiddleware from '../app/Http/Middlewares/AuthMiddleware.js';</div>
+      <div class="line ctx">  ...</div>
+      <div class="line ctx">  router.use(CorsMiddleware);</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ /**</div>
+      <div class="line add">+  * Métricas: mede a duração de toda requisição (histograma do Prometheus)</div>
+      <div class="line add">+  */</div>
+      <div class="line add">+ router.use(MetricsMiddleware);</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ /**</div>
+      <div class="line add">+  * Endpoint que o Prometheus coleta (o nginx bloqueia o acesso de fora)</div>
+      <div class="line add">+  * GET /metrics</div>
+      <div class="line add">+  */</div>
+      <div class="line add">+ router.get('/metrics', MetricsController);</div>
+      <div class="line ctx"></div>
+      <div class="line ctx">  ...</div>
+      <div class="line ctx"></div>
+      <div class="line add">+ /** Ranking do chat com cache-aside no Redis (o botão do chat dispara requisições aqui) */</div>
+      <div class="line add">+ router.get('/api/relatorio', ReportController);</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ /** Liga/desliga o cache do relatório (só o professor, com ADMIN_TOKEN) */</div>
+      <div class="line add">+ router.post('/api/admin/cache', AdminMiddleware, ToggleCacheController);</div>
+      <div class="line add">+ </div>
+      <div class="line ctx">  /** Router para usuários */</div>
+    </div>
+
+    <div class="diff">
+      <div class="diff-head">docker/nginx/default.conf.template</div>
+      <div class="line ctx">      index index.html; # Arquivo padrão a ser carregado, nos arquivos estáticos</div>
+      <div class="line ctx"></div>
+      <div class="line ctx">      client_max_body_size 100M; # Tamanho máximo permitido do corpo da requisição</div>
+      <div class="line add">+ </div>
+      <div class="line add">+     # /metrics é do Prometheus: de fora (pelo nginx) devolve 404; o Prometheus coleta direto no nodeweb, pela data-network</div>
+      <div class="line add">+     location = /metrics {</div>
+      <div class="line add">+         return 404;</div>
+      <div class="line add">+     }</div>
+      <div class="line ctx"></div>
+      <div class="line ctx">      location / {</div>
+      <div class="line ctx">          autoindex on; # Mostra índice de arquivos se não encontrar o index</div>
+    </div>
+
+    <div class="why">
+      <div class="why-card">
+        <h4>Histograma e p95</h4>
+        <p>A latência vai num histograma (<code class="inline">http_request_duration_seconds</code>): conta quantas requisições caíram em cada faixa de tempo, e é daí que o Grafana calcula o p95. A média esconderia as requisições lentas.</p>
+      </div>
+      <div class="why-card">
+        <h4>Label route</h4>
+        <p>O label é o padrão da rota (<code class="inline">/api/relatorio</code>), nunca a URL com ids: cada valor novo de label vira uma série nova no Prometheus.</p>
+      </div>
+      <div class="why-card">
+        <h4>Cache hit e miss</h4>
+        <p>O <code class="inline">ReportController</code> (etapa 5) incrementa <code class="inline">cache_requests_total</code> com <code class="inline">result=hit|miss</code>: é o que alimenta o gráfico do hit ratio. Por isso aquele arquivo já aparece com as linhas do <code class="inline">cacheRequests</code>.</p>
+      </div>
+      <div class="why-card">
+        <h4>/metrics não é público</h4>
+        <p>O nginx repassa ao Node tudo que não é estático, inclusive <code class="inline">/metrics</code>: o <code class="inline">location = /metrics</code> devolve 404 de fora. O Prometheus coleta direto no nodeweb, pela data-network, sem passar pelo nginx. A imagem do nginx copia o template no build: <code class="inline">docker compose up -d --build nginx-container</code>.</p>
+      </div>
+      <div class="why-card">
+        <h4>Dependência</h4>
+        <p><code class="inline">prom-client</code> no <code class="inline">package.json</code> (junto do <code class="inline">redis</code> da etapa 4) e no lock: recriar o <code class="inline">nodemodules-volume</code>.</p>
+      </div>
+    </div>
+
+    <div class="ok">
+      <strong><i class="fa-solid fa-circle-check"></i> Conferido:</strong>
+      <p><code class="inline">node --check</code> sem erro em todos os arquivos. O <code class="inline">/metrics</code> e o nginx NÃO foram acionados (Docker não subiu).</p>
+    </div>
+  </div>
+
+  <!-- ETAPA 10 -->
+  <div class="entry" id="etapa-10">
+    <div class="entry-dot">10</div>
+    <div class="entry-date">Etapa 10 · Observabilidade</div>
+    <h2>Containers prometheus e grafana, com dashboard e log das mensagens</h2>
+    <p class="sub">O Prometheus busca o /metrics do nodeweb a cada 5 s e guarda; o Grafana sobe já configurado (provisioning) com duas fontes: o Prometheus e o Postgres, e um dashboard com os gráficos e o log das mensagens do chat.</p>
+
+    <div class="diff">
+      <div class="diff-head">docker-compose.yml</div>
+      <div class="line ctx">          aliases:</div>
+      <div class="line ctx">            - redis_host</div>
+      <div class="line add">+ </div>
+      <div class="line add">+   #PROMETHEUS (coleta e guarda as métricas): busca o /metrics do nodeweb a cada 5 s (pull) pela data-network</div>
+      <div class="line add">+   prometheus-container:</div>
+      <div class="line add">+     image: prom/prometheus:v3.5.0</div>
+      <div class="line add">+     restart: unless-stopped</div>
+      <div class="line add">+     depends_on:</div>
+      <div class="line add">+       - nodeweb-container</div>
+      <div class="line add">+     ports:</div>
+      <div class="line add">+       - "${PROMETHEUS_PORT:-9090}:9090"   # a interface do Prometheus (Status &gt; Targets mostra o nodeweb)</div>
+      <div class="line add">+     volumes:</div>
+      <div class="line add">+       - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml</div>
+      <div class="line add">+       - prometheus-volume:/prometheus</div>
+      <div class="line add">+     networks:</div>
+      <div class="line add">+       data-network:</div>
+      <div class="line add">+         aliases:</div>
+      <div class="line add">+           - prometheus_host</div>
+      <div class="line add">+ </div>
+      <div class="line add">+   #GRAFANA (só mostra): consulta o Prometheus (métricas) e o Postgres (as mensagens do chat). Nas DUAS redes</div>
+      <div class="line add">+   grafana-container:</div>
+      <div class="line add">+     image: grafana/grafana:12.1.0</div>
+      <div class="line add">+     restart: unless-stopped</div>
+      <div class="line add">+     env_file:</div>
+      <div class="line add">+       - .env</div>
+      <div class="line add">+     environment:</div>
+      <div class="line add">+       GF_SECURITY_ADMIN_USER: admin</div>
+      <div class="line add">+       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}</div>
+      <div class="line add">+       GF_USERS_ALLOW_SIGN_UP: "false"</div>
+      <div class="line add">+       # O datasource do Postgres lê estas variáveis (provisioning interpola $VAR)</div>
+      <div class="line add">+       POSTGRES_HOST: postgres_host</div>
+      <div class="line add">+       POSTGRES_PORT: 5432</div>
+      <div class="line add">+     depends_on:</div>
+      <div class="line add">+       - prometheus-container</div>
+      <div class="line add">+       - postgres-container</div>
+      <div class="line add">+     ports:</div>
+      <div class="line add">+       - "${GRAFANA_PORT:-3002}:3000"</div>
+      <div class="line add">+     volumes:</div>
+      <div class="line add">+       - ./docker/grafana/provisioning:/etc/grafana/provisioning</div>
+      <div class="line add">+       - grafana-volume:/var/lib/grafana</div>
+      <div class="line add">+     networks:</div>
+      <div class="line add">+       edge-network:</div>
+      <div class="line add">+         aliases:</div>
+      <div class="line add">+           - grafana_host</div>
+      <div class="line add">+       data-network:</div>
+      <div class="line add">+         aliases:</div>
+      <div class="line add">+           - grafana_host</div>
+      <div class="line ctx"></div>
+      <div class="line ctx">  networks:</div>
+      <div class="line ctx">  ...</div>
+      <div class="line ctx">    elastic-volume:</div>
+      <div class="line ctx">    rabbitmq-volume:</div>
+      <div class="line add">+   prometheus-volume:</div>
+      <div class="line add">+   grafana-volume:</div>
+    </div>
+
+    <div class="diff">
+      <div class="diff-head">docker/prometheus/prometheus.yml</div>
+      <div class="line add">+ # Prometheus: busca (pull) as métricas, não recebe nada de ninguém</div>
+      <div class="line add">+ global:</div>
+      <div class="line add">+   scrape_interval: 5s              # coleta a cada 5 segundos</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ scrape_configs:</div>
+      <div class="line add">+   - job_name: nodeweb</div>
+      <div class="line add">+     metrics_path: /metrics</div>
+      <div class="line add">+     static_configs:</div>
+      <div class="line add">+       - targets: ["nodeweb_host:3000"]   # alias do nodeweb na data-network (não passa pelo nginx)</div>
+    </div>
+
+    <div class="diff">
+      <div class="diff-head">docker/grafana/provisioning/datasources/datasources.yml</div>
+      <div class="line add">+ # Fontes de dados do Grafana, criadas na subida (sem clicar em nada).</div>
+      <div class="line add">+ # Prometheus: as métricas (req/s, p95, cache). Postgres: as mensagens do chat gravadas pelo job save-message.</div>
+      <div class="line add">+ apiVersion: 1</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ datasources:</div>
+      <div class="line add">+   - name: Prometheus</div>
+      <div class="line add">+     uid: prometheus</div>
+      <div class="line add">+     type: prometheus</div>
+      <div class="line add">+     access: proxy</div>
+      <div class="line add">+     url: http://prometheus_host:9090</div>
+      <div class="line add">+     isDefault: true</div>
+      <div class="line add">+ </div>
+      <div class="line add">+   - name: Postgres</div>
+      <div class="line add">+     uid: postgres</div>
+      <div class="line add">+     type: grafana-postgresql-datasource</div>
+      <div class="line add">+     access: proxy</div>
+      <div class="line add">+     url: postgres_host:5432</div>
+      <div class="line add">+     user: $POSTGRES_USER</div>
+      <div class="line add">+     jsonData:</div>
+      <div class="line add">+       database: $POSTGRES_DB</div>
+      <div class="line add">+       sslmode: disable</div>
+      <div class="line add">+       postgresVersion: 1800</div>
+      <div class="line add">+     secureJsonData:</div>
+      <div class="line add">+       password: $POSTGRES_PASSWORD</div>
+    </div>
+
+    <div class="diff">
+      <div class="diff-head">docker/grafana/provisioning/dashboards/dashboards.yml</div>
+      <div class="line add">+ # Diz ao Grafana onde estão os dashboards em JSON (montados junto, em /etc/grafana/provisioning/dashboards)</div>
+      <div class="line add">+ apiVersion: 1</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ providers:</div>
+      <div class="line add">+   - name: cache-e-observabilidade</div>
+      <div class="line add">+     type: file</div>
+      <div class="line add">+     disableDeletion: false</div>
+      <div class="line add">+     updateIntervalSeconds: 10</div>
+      <div class="line add">+     options:</div>
+      <div class="line add">+       path: /etc/grafana/provisioning/dashboards</div>
+    </div>
+
+    <div class="diff">
+      <div class="diff-head">docker/grafana/provisioning/dashboards/cache-observabilidade.json</div>
+      <div class="line add">+ {</div>
+      <div class="line add">+   "uid": "cache-observabilidade",</div>
+      <div class="line add">+   "title": "Cache e Observabilidade",</div>
+      <div class="line add">+   "tags": [</div>
+      <div class="line add">+     "aula-11"</div>
+      <div class="line add">+   ],</div>
+      <div class="line add">+   "timezone": "browser",</div>
+      <div class="line add">+   "schemaVersion": 39,</div>
+      <div class="line add">+   "version": 1,</div>
+      <div class="line add">+   "refresh": "5s",</div>
+      <div class="line add">+   "time": {</div>
+      <div class="line add">+     "from": "now-15m",</div>
+      <div class="line add">+     "to": "now"</div>
+      <div class="line add">+   },</div>
+      <div class="line add">+   "editable": true,</div>
+      <div class="line add">+   "panels": [</div>
+      <div class="line add">+     {</div>
+      <div class="line add">+       "id": 1,</div>
+      <div class="line add">+       "type": "timeseries",</div>
+      <div class="line add">+       "title": "Requisições por segundo",</div>
+      <div class="line add">+       "datasource": {</div>
+      <div class="line add">+         "type": "prometheus",</div>
+      <div class="line add">+         "uid": "prometheus"</div>
+      <div class="line add">+       },</div>
+      <div class="line add">+       "gridPos": {</div>
+      <div class="line add">+         "x": 0,</div>
+      <div class="line add">+         "y": 0,</div>
+      <div class="line add">+         "w": 8,</div>
+      <div class="line add">+         "h": 8</div>
+      <div class="line add">+       },</div>
+      <div class="line add">+       "fieldConfig": {</div>
+      <div class="line add">+         "defaults": {</div>
+      <div class="line add">+           "unit": "reqps",</div>
+      <div class="line add">+           "custom": {</div>
+      <div class="line add">+             "lineWidth": 2,</div>
+      <div class="line add">+             "fillOpacity": 12</div>
+      <div class="line add">+           }</div>
+      <div class="line add">+         },</div>
+      <div class="line add">+         "overrides": []</div>
+      <div class="line add">+       },</div>
+      <div class="line add">+       "targets": [</div>
+      <div class="line add">+         {</div>
+      <div class="line add">+           "datasource": {</div>
+      <div class="line add">+             "type": "prometheus",</div>
+      <div class="line add">+             "uid": "prometheus"</div>
+      <div class="line add">+           },</div>
+      <div class="line add">+           "expr": "sum(rate(http_request_duration_seconds_count{route!=\"/metrics\"}[1m]))",</div>
+      <div class="line add">+           "legendFormat": "req/s",</div>
+      <div class="line add">+           "refId": "A"</div>
+      <div class="line add">+         }</div>
+      <div class="line add">+       ]</div>
+      <div class="line add">+     },</div>
+      <div class="line add">+     {</div>
+      <div class="line add">+       "id": 2,</div>
+      <div class="line add">+       "type": "timeseries",</div>
+      <div class="line add">+       "title": "Latência p95 (95% das requisições abaixo deste tempo)",</div>
+      <div class="line add">+       "datasource": {</div>
+      <div class="line add">+         "type": "prometheus",</div>
+      <div class="line add">+         "uid": "prometheus"</div>
+      <div class="line add">+       },</div>
+      <div class="line add">+       "gridPos": {</div>
+      <div class="line add">+         "x": 8,</div>
+      <div class="line add">+         "y": 0,</div>
+      <div class="line add">+         "w": 8,</div>
+      <div class="line add">+         "h": 8</div>
+      <div class="line add">+       },</div>
+      <div class="line add">+       "fieldConfig": {</div>
+      <div class="line add">+         "defaults": {</div>
+      <div class="line add">+           "unit": "s",</div>
+      <div class="line add">+           "custom": {</div>
+      <div class="line add">+             "lineWidth": 2,</div>
+      <div class="line add">+             "fillOpacity": 12</div>
+      <div class="line add">+           }</div>
+      <div class="line add">+         },</div>
+      <div class="line add">+         "overrides": []</div>
+      <div class="line add">+       },</div>
+      <div class="line add">+       "targets": [</div>
+      <div class="line add">+         {</div>
+      <div class="line add">+           "datasource": {</div>
+      <div class="line add">+             "type": "prometheus",</div>
+      <div class="line add">+             "uid": "prometheus"</div>
+      <div class="line add">+           },</div>
+      <div class="line add">+           "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{route!=\"/metrics\"}[1m])) by (le))",</div>
+      <div class="line add">+           "legendFormat": "p95",</div>
+      <div class="line add">+           "refId": "A"</div>
+      <div class="line add">+         }</div>
+      <div class="line add">+       ]</div>
+      <div class="line add">+     },</div>
+      <div class="line add">+     {</div>
+      <div class="line add">+       "id": 3,</div>
+      <div class="line add">+       "type": "gauge",</div>
+      <div class="line add">+       "title": "Taxa de acerto do cache (hit ratio)",</div>
+      <div class="line add">+       "datasource": {</div>
+      <div class="line add">+         "type": "prometheus",</div>
+      <div class="line add">+         "uid": "prometheus"</div>
+      <div class="line add">+       },</div>
+      <div class="line add">+       "gridPos": {</div>
+      <div class="line add">+         "x": 16,</div>
+      <div class="line add">+         "y": 0,</div>
+      <div class="line add">+         "w": 8,</div>
+      <div class="line add">+         "h": 8</div>
+      <div class="line add">+       },</div>
+      <div class="line add">+       "fieldConfig": {</div>
+      <div class="line add">+         "defaults": {</div>
+      <div class="line add">+           "unit": "percentunit",</div>
+      <div class="line add">+           "min": 0,</div>
+      <div class="line add">+           "max": 1,</div>
+      <div class="line add">+           "thresholds": {</div>
+      <div class="line add">+             "mode": "absolute",</div>
+      <div class="line add">+             "steps": [</div>
+      <div class="line add">+               {</div>
+      <div class="line add">+                 "color": "red",</div>
+      <div class="line add">+                 "value": null</div>
+      <div class="line add">+               },</div>
+      <div class="line add">+               {</div>
+      <div class="line add">+                 "color": "yellow",</div>
+      <div class="line add">+                 "value": 0.4</div>
+      <div class="line add">+               },</div>
+      <div class="line add">+               {</div>
+      <div class="line add">+                 "color": "green",</div>
+      <div class="line add">+                 "value": 0.8</div>
+      <div class="line add">+               }</div>
+      <div class="line add">+             ]</div>
+      <div class="line add">+           }</div>
+      <div class="line add">+         },</div>
+      <div class="line add">+         "overrides": []</div>
+      <div class="line add">+       },</div>
+      <div class="line add">+       "targets": [</div>
+      <div class="line add">+         {</div>
+      <div class="line add">+           "datasource": {</div>
+      <div class="line add">+             "type": "prometheus",</div>
+      <div class="line add">+             "uid": "prometheus"</div>
+      <div class="line add">+           },</div>
+      <div class="line add">+           "expr": "sum(rate(cache_requests_total{result=\"hit\"}[1m])) / sum(rate(cache_requests_total[1m]))",</div>
+      <div class="line add">+           "refId": "A"</div>
+      <div class="line add">+         }</div>
+      <div class="line add">+       ]</div>
+      <div class="line add">+     },</div>
+      <div class="line add">+     {</div>
+      <div class="line add">+       "id": 4,</div>
+      <div class="line add">+       "type": "timeseries",</div>
+      <div class="line add">+       "title": "Cache: hits e misses por segundo",</div>
+      <div class="line add">+       "datasource": {</div>
+      <div class="line add">+         "type": "prometheus",</div>
+      <div class="line add">+         "uid": "prometheus"</div>
+      <div class="line add">+       },</div>
+      <div class="line add">+       "gridPos": {</div>
+      <div class="line add">+         "x": 0,</div>
+      <div class="line add">+         "y": 8,</div>
+      <div class="line add">+         "w": 12,</div>
+      <div class="line add">+         "h": 8</div>
+      <div class="line add">+       },</div>
+      <div class="line add">+       "fieldConfig": {</div>
+      <div class="line add">+         "defaults": {</div>
+      <div class="line add">+           "unit": "ops",</div>
+      <div class="line add">+           "custom": {</div>
+      <div class="line add">+             "lineWidth": 2,</div>
+      <div class="line add">+             "fillOpacity": 12</div>
+      <div class="line add">+           }</div>
+      <div class="line add">+         },</div>
+      <div class="line add">+         "overrides": []</div>
+      <div class="line add">+       },</div>
+      <div class="line add">+       "targets": [</div>
+      <div class="line add">+         {</div>
+      <div class="line add">+           "datasource": {</div>
+      <div class="line add">+             "type": "prometheus",</div>
+      <div class="line add">+             "uid": "prometheus"</div>
+      <div class="line add">+           },</div>
+      <div class="line add">+           "expr": "sum(rate(cache_requests_total{result=\"hit\"}[1m]))",</div>
+      <div class="line add">+           "legendFormat": "hit",</div>
+      <div class="line add">+           "refId": "A"</div>
+      <div class="line add">+         },</div>
+      <div class="line add">+         {</div>
+      <div class="line add">+           "datasource": {</div>
+      <div class="line add">+             "type": "prometheus",</div>
+      <div class="line add">+             "uid": "prometheus"</div>
+      <div class="line add">+           },</div>
+      <div class="line add">+           "expr": "sum(rate(cache_requests_total{result=\"miss\"}[1m]))",</div>
+      <div class="line add">+           "legendFormat": "miss",</div>
+      <div class="line add">+           "refId": "B"</div>
+      <div class="line add">+         }</div>
+      <div class="line add">+       ]</div>
+      <div class="line add">+     },</div>
+      <div class="line add">+     {</div>
+      <div class="line add">+       "id": 5,</div>
+      <div class="line add">+       "type": "timeseries",</div>
+      <div class="line add">+       "title": "Mensagens do chat por minuto (tabela messages)",</div>
+      <div class="line add">+       "datasource": {</div>
+      <div class="line add">+         "type": "grafana-postgresql-datasource",</div>
+      <div class="line add">+         "uid": "postgres"</div>
+      <div class="line add">+       },</div>
+      <div class="line add">+       "gridPos": {</div>
+      <div class="line add">+         "x": 12,</div>
+      <div class="line add">+         "y": 8,</div>
+      <div class="line add">+         "w": 12,</div>
+      <div class="line add">+         "h": 8</div>
+      <div class="line add">+       },</div>
+      <div class="line add">+       "fieldConfig": {</div>
+      <div class="line add">+         "defaults": {</div>
+      <div class="line add">+           "unit": "short",</div>
+      <div class="line add">+           "custom": {</div>
+      <div class="line add">+             "drawStyle": "bars",</div>
+      <div class="line add">+             "fillOpacity": 60</div>
+      <div class="line add">+           }</div>
+      <div class="line add">+         },</div>
+      <div class="line add">+         "overrides": []</div>
+      <div class="line add">+       },</div>
+      <div class="line add">+       "targets": [</div>
+      <div class="line add">+         {</div>
+      <div class="line add">+           "datasource": {</div>
+      <div class="line add">+             "type": "grafana-postgresql-datasource",</div>
+      <div class="line add">+             "uid": "postgres"</div>
+      <div class="line add">+           },</div>
+      <div class="line add">+           "format": "time_series",</div>
+      <div class="line add">+           "rawQuery": true,</div>
+      <div class="line add">+           "editorMode": "code",</div>
+      <div class="line add">+           "refId": "A",</div>
+      <div class="line add">+           "rawSql": "SELECT $__timeGroupAlias(date, '1m'), count(*) AS mensagens FROM messages WHERE $__timeFilter(date) GROUP BY 1 ORDER BY 1"</div>
+      <div class="line add">+         }</div>
+      <div class="line add">+       ]</div>
+      <div class="line add">+     },</div>
+      <div class="line add">+     {</div>
+      <div class="line add">+       "id": 6,</div>
+      <div class="line add">+       "type": "table",</div>
+      <div class="line add">+       "title": "Log das mensagens do chat (últimas 100, gravadas pelo job save-message)",</div>
+      <div class="line add">+       "datasource": {</div>
+      <div class="line add">+         "type": "grafana-postgresql-datasource",</div>
+      <div class="line add">+         "uid": "postgres"</div>
+      <div class="line add">+       },</div>
+      <div class="line add">+       "gridPos": {</div>
+      <div class="line add">+         "x": 0,</div>
+      <div class="line add">+         "y": 16,</div>
+      <div class="line add">+         "w": 24,</div>
+      <div class="line add">+         "h": 12</div>
+      <div class="line add">+       },</div>
+      <div class="line add">+       "fieldConfig": {</div>
+      <div class="line add">+         "defaults": {},</div>
+      <div class="line add">+         "overrides": []</div>
+      <div class="line add">+       },</div>
+      <div class="line add">+       "options": {</div>
+      <div class="line add">+         "showHeader": true,</div>
+      <div class="line add">+         "sortBy": [</div>
+      <div class="line add">+           {</div>
+      <div class="line add">+             "displayName": "date",</div>
+      <div class="line add">+             "desc": true</div>
+      <div class="line add">+           }</div>
+      <div class="line add">+         ]</div>
+      <div class="line add">+       },</div>
+      <div class="line add">+       "targets": [</div>
+      <div class="line add">+         {</div>
+      <div class="line add">+           "datasource": {</div>
+      <div class="line add">+             "type": "grafana-postgresql-datasource",</div>
+      <div class="line add">+             "uid": "postgres"</div>
+      <div class="line add">+           },</div>
+      <div class="line add">+           "format": "table",</div>
+      <div class="line add">+           "rawQuery": true,</div>
+      <div class="line add">+           "editorMode": "code",</div>
+      <div class="line add">+           "refId": "A",</div>
+      <div class="line add">+           "rawSql": "SELECT date, name, ip, message FROM messages ORDER BY date DESC LIMIT 100"</div>
+      <div class="line add">+         }</div>
+      <div class="line add">+       ]</div>
+      <div class="line add">+     }</div>
+      <div class="line add">+   ]</div>
+      <div class="line add">+ }</div>
+    </div>
+
+    <div class="diff">
+      <div class="diff-head">.env.example</div>
+      <div class="line ctx">  HOST_LAN_IP=</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ # Segredo do professor para ligar/desligar o cache (POST /api/admin/cache, header x-admin-token)</div>
+      <div class="line add">+ ADMIN_TOKEN=</div>
+      <div class="line add">+ </div>
+      <div class="line add">+ # Portas publicadas no host (padrões se ficarem vazias: Grafana 3002, Prometheus 9090) e senha do admin do Grafana</div>
+      <div class="line add">+ GRAFANA_PORT=3002</div>
+      <div class="line add">+ PROMETHEUS_PORT=9090</div>
+      <div class="line add">+ GRAFANA_PASSWORD=admin</div>
+    </div>
+
+    <div class="why">
+      <div class="why-card">
+        <h4>Prometheus: pull</h4>
+        <p>O <code class="inline">prometheus.yml</code> lista quem coletar (<code class="inline">nodeweb_host:3000</code>, alias da data-network) a cada 5 s. O nodeweb não envia nada.</p>
+      </div>
+      <div class="why-card">
+        <h4>Grafana não guarda nada</h4>
+        <p>Só consulta: o Prometheus (PromQL) para req/s, p95 e hit ratio; o Postgres para a tabela messages.</p>
+      </div>
+      <div class="why-card">
+        <h4>Log das mensagens</h4>
+        <p>Um painel de tabela lê <code class="inline">SELECT date, name, ip, message FROM messages ORDER BY date DESC LIMIT 100</code>: são as mensagens gravadas pelo job <code class="inline">save-message</code>. Outro painel conta mensagens por minuto.</p>
+      </div>
+      <div class="why-card">
+        <h4>Sobe configurado</h4>
+        <p>O provisioning cria as fontes de dados e o dashboard na subida, sem clicar. O datasource do Postgres lê <code class="inline">$POSTGRES_USER</code>, <code class="inline">$POSTGRES_PASSWORD</code> e <code class="inline">$POSTGRES_DB</code> do <code class="inline">.env</code> (o container tem o <code class="inline">env_file</code>).</p>
+      </div>
+      <div class="why-card">
+        <h4>Nas duas redes</h4>
+        <p>O Grafana fica na <code class="inline">edge-network</code> (para você abrir no navegador) e na <code class="inline">data-network</code> (para alcançar o Prometheus e o Postgres). O Prometheus fica só nos dados.</p>
+      </div>
+      <div class="why-card">
+        <h4>Portas abertas</h4>
+        <p><code class="inline">3002 → 3000</code> (Grafana, login <code class="inline">admin</code> com <code class="inline">GRAFANA_PASSWORD</code>, padrão <code class="inline">admin</code>) e <code class="inline">9090 → 9090</code> (interface do Prometheus: Status > Targets). Os padrões valem se o <code class="inline">.env</code> não definir as variáveis.</p>
+      </div>
+    </div>
+
+    <div class="ok">
+      <strong><i class="fa-solid fa-circle-check"></i> Conferido:</strong>
+      <p>YAML do compose, do Prometheus e do provisioning válidos (PyYAML) e o JSON do dashboard válido (6 painéis). O dashboard e as consultas NÃO foram abertos no Grafana (Docker não subiu).</p>
+    </div>
+  </div>
+
+  <!-- ETAPA 11 -->
+  <div class="entry" id="etapa-11">
+    <div class="entry-dot">11</div>
+    <div class="entry-date">Etapa 11 · Timeline</div>
+    <h2>O botão do raio-x na timeline</h2>
+    <p class="sub">A linha da Aula 11 na timeline do curso ganha o botão raio-x →, ao lado de slides, slide pdf e briefing.</p>
+
+    <div class="diff">
+      <div class="diff-head">index.html</div>
+      <div class="line ctx">            &lt;div class="info"&gt;&lt;p class="title"&gt;Cache e Observabilidade&lt;/p&gt;&lt;p class="desc"&gt;O caminho de uma requisição e dois networks Docker (borda e dados); cache com Redis (cache-aside, TTL e invalidação); observabilidade com Prometheus e Grafana; demonstração com a sala inteira como tráfego.&lt;/p&gt;&lt;/div&gt;</div>
+      <div class="line rem">-           &lt;div class="chips"&gt;&lt;a class="chip primary" target="_blank" rel="noopener" href="aulas/11/slide/index.html"&gt;slides →&lt;/a&gt;&lt;a class="chip" href="aulas/11/%5BFE%5D%20%5B11%5D%20Cache%20e%20Observabilidade.pdf" download="[FE] [11] Cache e Observabilidade.pdf" target="_blank" rel="noopener"&gt;slide pdf ↓&lt;/a&gt;&lt;a class="chip" target="_blank" rel="noopener" href="aulas/11/briefing/index.html"&gt;briefing →&lt;/a&gt;&lt;/div&gt;</div>
+      <div class="line add">+           &lt;div class="chips"&gt;&lt;a class="chip primary" target="_blank" rel="noopener" href="aulas/11/slide/index.html"&gt;slides →&lt;/a&gt;&lt;a class="chip" href="aulas/11/%5BFE%5D%20%5B11%5D%20Cache%20e%20Observabilidade.pdf" download="[FE] [11] Cache e Observabilidade.pdf" target="_blank" rel="noopener"&gt;slide pdf ↓&lt;/a&gt;&lt;a class="chip" target="_blank" rel="noopener" href="aulas/11/briefing/index.html"&gt;briefing →&lt;/a&gt;&lt;a class="chip" target="_blank" rel="noopener" href="aulas/11/raio-x/index.html"&gt;raio-x →&lt;/a&gt;&lt;/div&gt;</div>
+      <div class="line ctx">          &lt;/div&gt;</div>
+    </div>
+
+    <div class="why">
+      <div class="why-card">
+        <h4>Um raio-x por aula</h4>
+        <p>O botão aponta para aulas/11/raio-x/index.html, o arquivo único que cresce a cada mudança de código da aula.</p>
+      </div>
+    </div>
+
+    <div class="ok">
+      <strong><i class="fa-solid fa-circle-check"></i> Conferido:</strong>
+      <p>Link conferido no <code class="inline">index.html</code>; o site publicado só muda quando o Luan mandar publicar.</p>
+    </div>
+  </div>
+
+</div>
+</main>
+
+<footer>
+  Aula 11 — Cache e Observabilidade · Frontend 2026.2 · Raio-X do Código (timeline viva — novas etapas entram aqui embaixo)
+</footer>
+
+<script src="../../../assets/raio-x.js"></script>
+</body>
+</html>
