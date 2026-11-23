@@ -16,6 +16,8 @@
   --host-bg: #eceee9;
   --host-border: #b9c0b6;
   --net-border: #27313a;
+  --net-edge: #2b6cb0;
+  --net-data: #7c3aed;
   --lan-bg: #eef3f8;
   --lan-border: #8aa0b8;
   --node-bg: #dce8fb;
@@ -56,6 +58,8 @@
   --host-bg: #121c18;
   --host-border: #34443b;
   --net-border: #a9b8c9;
+  --net-edge: #7db3f0;
+  --net-data: #c4a1ff;
   --lan-bg: #131d29;
   --lan-border: #4d6580;
   --node-bg: #172a4d;
@@ -141,6 +145,15 @@ h1 .accent{ color: var(--accent); }
   width: calc(var(--w) / 2100 * 100%);
   height: calc(var(--h) / 1300 * 100%);
 }
+.stage > svg.netshape{ left: 0; top: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
+.net-data{ fill: color-mix(in srgb, var(--net-data) 9%, transparent); stroke: var(--net-data); stroke-width: 3; stroke-dasharray: 12 8; stroke-linejoin: round; }
+.net-edge{ fill: color-mix(in srgb, var(--net-edge) 9%, transparent); stroke: var(--net-edge); stroke-width: 3; stroke-dasharray: 12 8; }
+.net-label{ font-weight: 700; font-size: 22px; }
+.net-label.edge{ fill: var(--net-edge); }
+.net-label.data{ fill: var(--net-data); }
+.lg-net-edge, .lg-net-data{ display: inline-block; width: 22px; height: 12px; border: 2px dashed; border-radius: 4px; margin-right: 6px; vertical-align: -1px; }
+.lg-net-edge{ border-color: var(--net-edge); }
+.lg-net-data{ border-color: var(--net-data); }
 .stage > svg.wires{ left: 0; top: 0; width: 100%; height: 100%; z-index: 3; pointer-events: none; overflow: visible; }
 
 .host-title{ font-weight: 700; font-size: clamp(.8rem, 1.3vw, 1.15rem); color: var(--muted); }

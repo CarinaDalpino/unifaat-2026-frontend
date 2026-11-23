@@ -3,6 +3,7 @@ import type { FormEvent, MouseEvent } from "react"
 import { io } from "socket.io-client"
 import type { Socket } from "socket.io-client"
 import type { ChatFeedItem, ChatJoin, ChatMessage, OnlineUser } from "../types/chat"
+import { LoadButton } from "./LoadButton"
 
 // Os botões de reação: clicar manda o emoji como mensagem
 const EMOJIS = [
@@ -229,6 +230,8 @@ export function ChatApp() {
                 })}
             </ul>
         </div>
+
+        <LoadButton />
         </>
     )
 }

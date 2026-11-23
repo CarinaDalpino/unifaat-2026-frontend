@@ -1,0 +1,9 @@
+# Prometheus: busca (pull) as métricas, não recebe nada de ninguém
+global:
+  scrape_interval: 5s              # coleta a cada 5 segundos
+
+scrape_configs:
+  - job_name: nodeweb
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["nodeweb_host:3000"]   # alias do nodeweb na data-network (não passa pelo nginx)

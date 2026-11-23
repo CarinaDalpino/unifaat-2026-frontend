@@ -16,6 +16,11 @@ import taskContextRouter from './apis/taskContextRouter.js';
 import fileUpload from 'express-fileupload';
 import swaggerUi from 'swagger-ui-express';
 import LoginController from '../app/Http/Controllers/LoginController.js';
+import ReportController from '../app/Http/Controllers/ReportController.js';
+import MetricsController from '../app/Http/Controllers/MetricsController.js';
+import MetricsMiddleware from '../app/Http/Middlewares/MetricsMiddleware.js';
+import ToggleCacheController from '../app/Http/Controllers/ToggleCacheController.js';
+import AdminMiddleware from '../app/Http/Middlewares/AdminMiddleware.js';
 import AuthMiddleware from '../app/Http/Middlewares/AuthMiddleware.js';
 import AuthTokenMiddleware from '../app/Http/Middlewares/AuthTokenMiddleware.js';
 import CorsMiddleware from '../app/Http/Middlewares/CorsMiddleware.js';
@@ -40,6 +45,17 @@ const router = Router();
  * Libera o acesso à API para o front-end de desenvolvimento (Vite)
  */
 router.use(CorsMiddleware);
+
+/**
+ * Métricas: mede a duração de toda requisição (histograma do Prometheus)
+ */
+router.use(MetricsMiddleware);
+
+/**
+ * Endpoint que o Prometheus coleta (o nginx bloqueia o acesso de fora)
+ * GET /metrics
+ */
+router.get('/metrics', MetricsController);
 
 /**
  * Middleware para parsear cookies
@@ -131,6 +147,12 @@ router.use('/docs', swaggerUi.serve, swaggerUi.setup(SwaggerDoc()));
 
 /** Login */
 router.post('/api/login', LoginController);
+
+/** Ranking do chat com cache-aside no Redis (o botão do chat dispara requisições aqui) */
+router.get('/api/relatorio', ReportController);
+
+/** Liga/desliga o cache do relatório (só o professor, com ADMIN_TOKEN) */
+router.post('/api/admin/cache', AdminMiddleware, ToggleCacheController);
 
 /** Router para usuários */
 router.use("/users", userRouter);

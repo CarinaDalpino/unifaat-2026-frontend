@@ -1,0 +1,10 @@
+# Diz ao Grafana onde estão os dashboards em JSON (montados junto, em /etc/grafana/provisioning/dashboards)
+apiVersion: 1
+
+providers:
+  - name: cache-e-observabilidade
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    options:
+      path: /etc/grafana/provisioning/dashboards
