@@ -11,7 +11,7 @@
 <div class="layout">
   <aside class="side">
     <a class="back" href="../../../index.html">← Voltar</a>
-    <details class="toc" open><summary>Nesta página</summary><ol><li class="l1"><a href="#topo">11 - Cache e Observabilidade</a></li><li class="l2"><a href="#s1-introdução">1 - Introdução</a></li><li class="l2"><a href="#s2-o-mapa-da-arquitetura">2 - O Mapa da Arquitetura</a></li><li class="l3"><a href="#s2-1-uma-requisição-do-navegador-ao-dado">2.1 - Uma Requisição, do Navegador ao Dado</a></li><li class="l3"><a href="#s2-2-quem-faz-o-quê">2.2 - Quem Faz o Quê</a></li><li class="l3"><a href="#s2-3-duas-perguntas-que-guiam-o-desenho">2.3 - Duas Perguntas Que Guiam o Desenho</a></li><li class="l2"><a href="#s3-redes-docker-segmentando-a-arquitetura">3 - Redes Docker: Segmentando a Arquitetura</a></li><li class="l3"><a href="#s3-1-o-problema-de-uma-rede-só">3.1 - O Problema de Uma Rede Só</a></li><li class="l3"><a href="#s3-2-dois-networks-borda-e-dados">3.2 - Dois Networks: Borda e Dados</a></li><li class="l3"><a href="#s3-3-no-docker-composeyml">3.3 - No docker-compose.yml</a></li><li class="l3"><a href="#s3-4-provando-que-funciona">3.4 - Provando Que Funciona</a></li><li class="l3"><a href="#s3-5-network-não-é-porta-publicada">3.5 - Network Não é Porta Publicada</a></li><li class="l2"><a href="#s4-cache-com-redis">4 - Cache com Redis</a></li><li class="l3"><a href="#s4-1-o-problema-a-mesma-pergunta-o-mesmo-custo">4.1 - O Problema: a Mesma Pergunta, o Mesmo Custo</a></li><li class="l3"><a href="#s4-2-o-que-é-o-redis">4.2 - O Que é o Redis</a></li><li class="l3"><a href="#s4-3-o-padrão-cache-aside">4.3 - O Padrão Cache-Aside</a></li><li class="l3"><a href="#s4-4-ttl-e-invalidação">4.4 - TTL e Invalidação</a></li><li class="l3"><a href="#s4-5-o-redis-no-projeto">4.5 - O Redis no Projeto</a></li><li class="l3"><a href="#s4-6-a-rota-pesada-com-cache-aside">4.6 - A Rota Pesada com Cache-Aside</a></li><li class="l2"><a href="#s5-observabilidade">5 - Observabilidade</a></li><li class="l3"><a href="#s5-1-enxergar-para-decidir">5.1 - Enxergar Para Decidir</a></li><li class="l3"><a href="#s5-2-prometheus-grafana">5.2 - Prometheus × Grafana</a></li><li class="l3"><a href="#s5-3-expondo-as-métricas-no-express">5.3 - Expondo as Métricas no Express</a></li><li class="l3"><a href="#s5-4-o-metrics-não-pode-ser-público">5.4 - O /metrics Não Pode Ser Público</a></li><li class="l3"><a href="#s5-5-prometheus-e-grafana-no-compose">5.5 - Prometheus e Grafana no Compose</a></li><li class="l3"><a href="#s5-6-as-consultas-do-painel">5.6 - As Consultas do Painel</a></li><li class="l2"><a href="#s6-a-demonstração-a-sala-vira-o-tráfego">6 - A Demonstração: a Sala Vira o Tráfego</a></li><li class="l3"><a href="#s6-1-o-roteiro">6.1 - O Roteiro</a></li><li class="l3"><a href="#s6-2-o-botão-no-react">6.2 - O Botão no React</a></li><li class="l3"><a href="#s6-3-cuidados-com-a-rede-da-sala">6.3 - Cuidados Com a Rede da Sala</a></li><li class="l2"><a href="#s7-juntando-tudo">7 - Juntando Tudo</a></li><li class="l3"><a href="#s7-1-o-quadro-geral">7.1 - O Quadro Geral</a></li><li class="l3"><a href="#s7-2-resumo-da-aula">7.2 - Resumo da Aula</a></li><li class="l2"><a href="#questoes">Questões do TA</a></li></ol></details>
+    <details class="toc" open><summary>Nesta página</summary><ol><li class="l1"><a href="#topo">11 - Cache e Observabilidade</a></li><li class="l2"><a href="#s1-introdução">1 - Introdução</a></li><li class="l2"><a href="#s2-o-mapa-da-arquitetura">2 - O Mapa da Arquitetura</a></li><li class="l3"><a href="#s2-1-uma-requisição-do-navegador-ao-dado">2.1 - Uma Requisição, do Navegador ao Dado</a></li><li class="l3"><a href="#s2-2-quem-faz-o-quê">2.2 - Quem Faz o Quê</a></li><li class="l3"><a href="#s2-3-duas-perguntas-que-guiam-o-desenho">2.3 - Duas Perguntas Que Guiam o Desenho</a></li><li class="l2"><a href="#s3-redes-docker-segmentando-a-arquitetura">3 - Redes Docker: Segmentando a Arquitetura</a></li><li class="l3"><a href="#s3-1-o-problema-de-uma-rede-só">3.1 - O Problema de Uma Rede Só</a></li><li class="l3"><a href="#s3-2-dois-networks-borda-e-dados">3.2 - Dois Networks: Borda e Dados</a></li><li class="l3"><a href="#s3-3-no-docker-composeyml">3.3 - No docker-compose.yml</a></li><li class="l3"><a href="#s3-4-provando-que-funciona">3.4 - Provando Que Funciona</a></li><li class="l3"><a href="#s3-5-network-não-é-porta-publicada">3.5 - Network Não é Porta Publicada</a></li><li class="l2"><a href="#s4-cache-com-redis">4 - Cache com Redis</a></li><li class="l3"><a href="#s4-1-o-problema-a-mesma-pergunta-o-mesmo-custo">4.1 - O Problema: a Mesma Pergunta, o Mesmo Custo</a></li><li class="l3"><a href="#s4-2-o-que-é-o-redis">4.2 - O Que é o Redis</a></li><li class="l3"><a href="#s4-3-o-padrão-cache-aside">4.3 - O Padrão Cache-Aside</a></li><li class="l3"><a href="#s4-4-ttl-e-invalidação">4.4 - TTL e Invalidação</a></li><li class="l3"><a href="#s4-5-as-mensagens-do-chat-tabela-job-e-fila">4.5 - As Mensagens do Chat: Tabela, Job e Fila</a></li><li class="l3"><a href="#s4-6-o-redis-no-projeto">4.6 - O Redis no Projeto</a></li><li class="l3"><a href="#s4-7-a-rota-pesada-com-cache-aside">4.7 - A Rota Pesada com Cache-Aside</a></li><li class="l2"><a href="#s5-observabilidade">5 - Observabilidade</a></li><li class="l3"><a href="#s5-1-enxergar-para-decidir">5.1 - Enxergar Para Decidir</a></li><li class="l3"><a href="#s5-2-prometheus-grafana">5.2 - Prometheus × Grafana</a></li><li class="l3"><a href="#s5-3-expondo-as-métricas-no-express">5.3 - Expondo as Métricas no Express</a></li><li class="l3"><a href="#s5-4-o-metrics-não-pode-ser-público">5.4 - O /metrics Não Pode Ser Público</a></li><li class="l3"><a href="#s5-5-prometheus-e-grafana-no-compose">5.5 - Prometheus e Grafana no Compose</a></li><li class="l3"><a href="#s5-6-as-consultas-do-painel">5.6 - As Consultas do Painel</a></li><li class="l2"><a href="#s6-a-demonstração-a-sala-vira-o-tráfego">6 - A Demonstração: a Sala Vira o Tráfego</a></li><li class="l3"><a href="#s6-1-o-roteiro">6.1 - O Roteiro</a></li><li class="l3"><a href="#s6-2-o-botão-no-react">6.2 - O Botão no React</a></li><li class="l3"><a href="#s6-3-cuidados-com-a-rede-da-sala">6.3 - Cuidados Com a Rede da Sala</a></li><li class="l2"><a href="#s7-juntando-tudo">7 - Juntando Tudo</a></li><li class="l3"><a href="#s7-1-o-quadro-geral">7.1 - O Quadro Geral</a></li><li class="l3"><a href="#s7-2-resumo-da-aula">7.2 - Resumo da Aula</a></li><li class="l2"><a href="#questoes">Questões do TA</a></li></ol></details>
   </aside>
   <main class="doc">
     <header class="cover" id="topo">
@@ -76,6 +76,8 @@
 
   postgres-container:
     image: postgres:<span class="tk-num">18</span>
+    ports:
+      - <span class="tk-str">"${POSTGRES_PORT}:5432"</span>           <span class="cm"># porta publicada no host (seção 3.5)</span>
     networks:
       data-network:                       <span class="cm"># só a rede de dados</span>
         aliases:
@@ -84,6 +86,8 @@
   redis-container:
     image: redis:<span class="tk-num">7.4</span>-alpine
     restart: unless-stopped
+    ports:
+      - <span class="tk-str">"${REDIS_HOST_PORT:-6375}:6379"</span>   <span class="cm"># do host: localhost:6375; na rede: redis_host:6379</span>
     networks:
       data-network:
         aliases:
@@ -105,18 +109,21 @@
 <p>Dois cuidados importantes:</p>
 <ul><li>o <strong>alias vale por network</strong>: um nome só é resolvido por quem compartilha <strong>alguma</strong> rede com o container;</li><li>**<code>depends_on</code> não isola nada<strong>: ele só controla a </strong>ordem de subida**. Quem isola é o <em>network</em>.</li></ul>
 <h3 id="s3-5-network-não-é-porta-publicada"><span class="hn">3.5</span>Network Não é Porta Publicada</h3>
-<p>Segmentar a rede protege o tráfego <strong>entre containers</strong>. Já o <code>ports:</code> do compose <strong>publica a porta na máquina</strong> (o <em>host</em>), e isso vale <strong>independente do network</strong>. Hoje o <code>docker-compose.yml</code> publica o <code>5432</code> do Postgres e as portas <code>5672</code> e <code>15672</code> do RabbitMQ: qualquer um que alcance o seu notebook pela rede da sala consegue conectar nelas.</p>
-<p>Para o banco ficar mesmo <strong>inacessível de fora</strong>, não basta o network: é preciso **remover o <code>ports:</code>** dele. O acesso interno continua funcionando pelo network (<code>postgres_host:5432</code>); só o acesso externo some. É o mesmo raciocínio que já usamos no Elasticsearch, que **não tem <code>ports:</code>** de propósito.</p>
-<div class="vsc ed"><div class="vsc-bar"><span class="vsc-dots"><i></i><i></i><i></i></span><span class="vsc-lang">yaml</span></div><pre class="code"><code>  postgres-container:
-    image: postgres:<span class="tk-num">18</span>
-    <span class="cm"># sem "ports": só a data-network alcança o banco</span>
+<p>Segmentar a rede protege o tráfego <strong>entre containers</strong>. Já o <code>ports:</code> do compose <strong>publica a porta na máquina</strong> (o <em>host</em>), e isso vale <strong>independente do network</strong>. No nosso projeto várias portas estão publicadas <strong>de propósito</strong>, para o professor enxergar cada peça:</p>
+<div class="tbl"><table><thead><tr><th class="">Porta no host</th><th class="">Container</th><th class="">Para quê</th></tr></thead><tbody><tr><td class=" prim"><code>8080</code> (<code>NGNIX_WEB_PORT</code>)</td><td class=""><code>nginx</code></td><td class="">a aplicação</td></tr><tr><td class=" prim"><code>5172</code></td><td class=""><code>nodevitehmr</code></td><td class="">Vite em modo desenvolvimento</td></tr><tr><td class=" prim"><code>6789</code> (<code>POSTGRES_PORT</code>)</td><td class=""><code>postgres</code></td><td class="">DBeaver, <code>psql</code></td></tr><tr><td class=" prim"><code>5672</code> e <code>15672</code></td><td class=""><code>rabbitmq</code></td><td class="">AMQP e painel de administração</td></tr><tr><td class=" prim"><code>6375</code> (<code>REDIS_HOST_PORT</code>)</td><td class=""><code>redis</code></td><td class=""><code>redis-cli</code>, RedisInsight</td></tr><tr><td class=" prim"><code>3002</code> (<code>GRAFANA_PORT</code>)</td><td class=""><code>grafana</code></td><td class="">o painel</td></tr><tr><td class=" prim"><code>9090</code> (<code>PROMETHEUS_PORT</code>)</td><td class=""><code>prometheus</code></td><td class=""><em>Status &gt; Targets</em> e consultas PromQL</td></tr></tbody></table></div>
+<p>Isso tem um custo: qualquer pessoa que alcance o seu notebook pela rede da sala consegue conectar nessas portas, e o <strong>Redis não tem senha</strong>. O network não impede, porque o <code>ports:</code> abre uma porta <strong>do host</strong> para dentro do container.</p>
+<p>Para um banco ficar mesmo <strong>inacessível de fora</strong>, o caminho é **não ter <code>ports:</code>**: o acesso interno continua pelo network (<code>postgres_host:5432</code>) e só o acesso externo some. O Elasticsearch do projeto já é assim, de propósito:</p>
+<div class="vsc ed"><div class="vsc-bar"><span class="vsc-dots"><i></i><i></i><i></i></span><span class="vsc-lang">yaml</span></div><pre class="code"><code>  elasticsearch-container:
+    image: elasticsearch:<span class="tk-num">8.15</span>.<span class="tk-num">0</span>
+    <span class="cm"># sem "ports": só a data-network alcança o Elasticsearch</span>
     networks:
       data-network:
         aliases:
-          - postgres_host</code></pre></div>
+          - elasticsearch_host</code></pre></div>
+<p>Em produção o raciocínio é o mesmo: publica-se só o que precisa ser alcançado de fora (o Nginx), e todo o resto fica <strong>só na rede interna</strong>.</p>
 <h2 id="s4-cache-com-redis"><span class="hn">4</span>Cache com Redis</h2>
 <h3 id="s4-1-o-problema-a-mesma-pergunta-o-mesmo-custo"><span class="hn">4.1</span>O Problema: a Mesma Pergunta, o Mesmo Custo</h3>
-<p>Imagine uma tela de relatório que mostra <strong>quantas tarefas cada usuário tem e quantas concluiu</strong>. Para montar isso, o Postgres precisa **varrer a tabela <code>tasks</code> inteira<strong> e agrupar. Se a tabela tem meio milhão de linhas, é uma consulta cara. O problema não é fazê-la </strong>uma vez<strong>: é que </strong>a resposta é a mesma** para todo mundo, e a consulta cara é repetida a cada requisição.</p>
+<p>O chat da Aula 10 passa a <strong>gravar cada mensagem</strong> no Postgres (seção 4.5), e a tela de ranking mostra <strong>quem mais mandou mensagem</strong>. Para montar isso, o Postgres precisa **varrer a tabela <code>messages</code> inteira<strong> e agrupar por nome. Com poucas mensagens é barato; com dezenas de milhares de linhas, já pesa quando muita gente pede ao mesmo tempo. O problema não é fazê-la </strong>uma vez<strong>: é que </strong>a resposta é a mesma** para todo mundo, e a consulta cara é repetida a cada requisição.</p>
 <p>A saída é guardar a resposta pronta <strong>em memória</strong>, e servir dela enquanto ela ainda vale. É o <strong>cache</strong>.</p>
 <h3 id="s4-2-o-que-é-o-redis"><span class="hn">4.2</span>O Que é o Redis</h3>
 <p>O <strong>Redis</strong> é um banco <strong>chave-valor em memória</strong>. Como tudo fica na RAM, a leitura é de microssegundos. Ele não substitui o Postgres: o dado <strong>oficial</strong> continua lá. O Redis guarda <strong>cópias</strong> que se pode perder e refazer.</p>
@@ -129,104 +136,219 @@
 <p>Cache guarda uma <strong>cópia</strong>, e cópia envelhece. Existem duas defesas:</p>
 <ul><li><strong>TTL</strong> (<em>time to live</em>): a chave <strong>expira sozinha</strong> depois de N segundos. Limita <strong>por quanto tempo</strong> o dado pode ficar velho;</li><li><strong>Invalidação</strong>: ao <strong>escrever</strong> o dado (criar uma tarefa, concluir uma tarefa), apaga-se a chave (<code>DEL</code>) e a próxima leitura refaz o cache. Pode ser feita no próprio controller, ou por um <strong>job/evento</strong> depois da gravação, usando a fila que já conhecemos.</li></ul>
 <p>Não existe TTL "certo": ele é um <strong>trade-off</strong> entre dado fresco e carga no banco. Um relatório que muda pouco aceita 30 segundos; um saldo bancário não aceita cache nenhum.</p>
-<h3 id="s4-5-o-redis-no-projeto"><span class="hn">4.5</span>O Redis no Projeto</h3>
-<p>O container entra no <code>data-network</code> (seção 3.3). A conexão fica junto das outras, em <code>database/connections</code>:</p>
+<h3 id="s4-5-as-mensagens-do-chat-tabela-job-e-fila"><span class="hn">4.5</span>As Mensagens do Chat: Tabela, Job e Fila</h3>
+<p>Antes do cache, precisamos do <strong>dado</strong>. Uma <em>migration</em> cria a tabela <code>messages</code> com <code>ip</code>, <code>name</code>, <code>message</code> e <code>date</code>:</p>
+<div class="vsc ed"><div class="vsc-bar"><span class="vsc-dots"><i></i><i></i><i></i></span><span class="vsc-tit">src/database/migrations/004_create_messages_table.js</span><span class="vsc-lang">js</span></div><pre class="code"><code><span class="cm">// src/database/migrations/004_create_messages_table.js</span>
+<span class="tk-kw">export</span> <span class="tk-kw">async</span> <span class="tk-kw">function</span> <span class="tk-fn">up</span>(db) {
+  <span class="tk-kw">await</span> db.<span class="tk-fn">query</span>(`
+    CREATE TABLE messages (
+      id SERIAL PRIMARY KEY,
+      ip <span class="tk-fn">VARCHAR</span>(<span class="tk-num">45</span>) NOT NULL,
+      name <span class="tk-fn">VARCHAR</span>(<span class="tk-num">255</span>) NOT NULL,
+      message TEXT NOT NULL,
+      date TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+}
+
+<span class="tk-kw">export</span> <span class="tk-kw">async</span> <span class="tk-kw">function</span> <span class="tk-fn">down</span>(db) {
+  <span class="tk-kw">await</span> db.<span class="tk-fn">query</span>(`
+    DROP TABLE messages
+  `)
+}</code></pre></div>
+<p>Rodando o comando de migração no container efêmero:</p>
+<div class="vsc term"><div class="vsc-bar"><span class="vsc-dots"><i></i><i></i><i></i></span><span class="vsc-lang">terminal</span></div><pre class="code"><code><span class="ps">$ </span><span class="tk-cmd">docker</span> compose run <span class="tk-flag">--rm</span> nodecommand-container migrate</code></pre></div>
+<p>Quem <strong>grava</strong> não é o websocket. É a regra da Aula 10: o websocket só conecta e distribui, e o que persiste vai para um <strong>worker pelo mesmo RabbitMQ</strong>. O Event faz o <code>dispatch</code> de um job na fila <code>save-message</code>, e um worker dedicado consome só essa fila:</p>
+<div class="vsc ed"><div class="vsc-bar"><span class="vsc-dots"><i></i><i></i><i></i></span><span class="vsc-tit">src/app/Events/Chat/ChatMessageEvent.js (acrescentar, depois do notify)</span><span class="vsc-lang">js</span></div><pre class="code"><code><span class="cm">// src/app/Events/Chat/ChatMessageEvent.js (acrescentar, depois do notify)</span>
+<span class="tk-kw">await</span> SaveMessageJob.<span class="tk-fn">dispatch</span>(<span class="tk-str">'save-message'</span>, { ip: <span class="tk-fn">ipOf</span>(context.socket), name, message, sentAt })</code></pre></div>
+<div class="vsc ed"><div class="vsc-bar"><span class="vsc-dots"><i></i><i></i><i></i></span><span class="vsc-tit">src/app/Jobs/SaveMessageJob.js</span><span class="vsc-lang">js</span></div><pre class="code"><code><span class="cm">// src/app/Jobs/SaveMessageJob.js</span>
+<span class="tk-kw">import</span> { createJob } <span class="tk-kw">from</span> <span class="tk-str">'../../utils/job.js'</span>
+<span class="tk-kw">import</span> MessageModel <span class="tk-kw">from</span> <span class="tk-str">'../Models/MessageModel.js'</span>
+
+<span class="tk-kw">export</span> <span class="tk-kw">default</span> <span class="tk-fn">createJob</span>({
+    name: <span class="tk-str">'SaveMessageJob'</span>,
+    handle: <span class="tk-kw">async</span> (payload) =&gt; {
+        <span class="tk-kw">const</span> { ip, name, message, sentAt } = payload
+
+        <span class="tk-kw">await</span> MessageModel.<span class="tk-fn">create</span>({ ip, name, message, date: <span class="tk-kw">new</span> <span class="tk-fn">Date</span>(sentAt) })
+
+        console.<span class="tk-fn">log</span>(<span class="tk-str">`Mensagem de ${name} (${ip}) salva no Postgres`</span>)
+    }
+})</code></pre></div>
+<p>No compose, um segundo worker da <strong>mesma imagem</strong> recebe o argumento <code>--queue save-message</code> no <code>command</code>, e o worker de antes continua na fila <code>default</code>:</p>
+<div class="vsc ed"><div class="vsc-bar"><span class="vsc-dots"><i></i><i></i><i></i></span><span class="vsc-lang">yaml</span></div><pre class="code"><code>  nodeworkersavemessage-container:
+    build:
+      context: .
+      dockerfile: docker/node-worker/Dockerfile
+    command: [<span class="tk-str">"--queue"</span>, <span class="tk-str">"save-message"</span>]   <span class="cm"># argumento do entrypoint: a fila deste worker</span>
+    networks:
+      data-network:
+        aliases:
+          - nodeworkersavemessage_host</code></pre></div>
+<p>Uma pegadinha: o <code>dispatch</code> fechava a conexão do RabbitMQ ao terminar, o que serve a um controller (processo curto). No websocket a conexão <strong>já está aberta</strong> (ele assina o exchange), e fechá-la derrubaria o chat inteiro. Por isso o <code>dispatch</code> agora só fecha a conexão que <strong>ele mesmo abriu</strong> (<code>rabbit.isConnected()</code>).</p>
+<p>Para o ranking pesar, precisa de volume de dados. Um seed grande:</p>
+<div class="vsc ed"><div class="vsc-bar"><span class="vsc-dots"><i></i><i></i><i></i></span><span class="vsc-lang">sql</span></div><pre class="code"><code>INSERT INTO messages (ip, name, message, date)
+SELECT <span class="tk-str">'192.168.0.'</span> || (<span class="tk-num">1</span> + n % <span class="tk-num">50</span>),
+       <span class="tk-str">'Aluno '</span> || (<span class="tk-num">1</span> + n % <span class="tk-num">40</span>),
+       <span class="tk-str">'mensagem '</span> || n,
+       NOW() - (n || <span class="tk-str">' seconds'</span>)::interval
+  FROM generate_series(<span class="tk-num">1</span>, <span class="tk-num">50000</span>) AS n;</code></pre></div>
+<h3 id="s4-6-o-redis-no-projeto"><span class="hn">4.6</span>O Redis no Projeto</h3>
+<p>O container entra no <code>data-network</code> (seção 3.3), com a porta <code>6375</code> publicada no host para inspecionar com <code>redis-cli -p 6375</code>. A conexão fica junto das outras, em <code>database/connections</code>. Ela <strong>conecta só no primeiro uso</strong>: importar o módulo não derruba o processo se o Redis estiver fora, e a mesma conexão é reaproveitada.</p>
 <div class="vsc ed"><div class="vsc-bar"><span class="vsc-dots"><i></i><i></i><i></i></span><span class="vsc-tit">src/database/connections/redis.js</span><span class="vsc-lang">js</span></div><pre class="code"><code><span class="cm">// src/database/connections/redis.js</span>
-<span class="tk-kw">import</span> { createClient } <span class="tk-kw">from</span> <span class="tk-str">'redis'</span>;
-<span class="tk-kw">import</span> { configDotenv } <span class="tk-kw">from</span> <span class="tk-str">'dotenv'</span>;
+<span class="tk-kw">import</span> { configDotenv } <span class="tk-kw">from</span> <span class="tk-str">'dotenv'</span>
+<span class="tk-kw">import</span> { createClient } <span class="tk-kw">from</span> <span class="tk-str">'redis'</span>
 
-<span class="tk-fn">configDotenv</span>({
-    quiet: <span class="tk-kw">true</span>
-});
+<span class="tk-kw">export</span> <span class="tk-kw">default</span> (() =&gt; {
+    <span class="tk-fn">configDotenv</span>({
+        quiet: <span class="tk-kw">true</span>
+    })
 
-<span class="tk-kw">const</span> host = process.env.REDIS_HOST || <span class="tk-str">'localhost'</span>;
-<span class="tk-kw">const</span> port = process.env.REDIS_PORT || <span class="tk-str">'6379'</span>;
+    <span class="tk-kw">const</span> isDocker = process.env.IS_DOCKER === <span class="tk-str">'true'</span>
+    <span class="tk-kw">const</span> redisHost = process.env.REDIS_HOST || (isDocker ? <span class="tk-str">'redis_host'</span> : <span class="tk-str">'localhost'</span>)
+    <span class="tk-kw">const</span> redisPort = process.env.REDIS_PORT || <span class="tk-str">'6379'</span>
 
-<span class="tk-kw">const</span> client = <span class="tk-fn">createClient</span>({
-    url: <span class="tk-str">`redis://${host}:${port}`</span>
-});
+    <span class="tk-kw">const</span> client = <span class="tk-fn">createClient</span>({
+        url: <span class="tk-str">`redis://${redisHost}:${redisPort}`</span>
+    })
 
-client.<span class="tk-fn">on</span>(<span class="tk-str">'error'</span>, (error) =&gt; {
-    console.<span class="tk-fn">error</span>(<span class="tk-str">'Redis:'</span>, error.message);
-});
+    client.<span class="tk-fn">on</span>(<span class="tk-str">'error'</span>, (error) =&gt; {
+        console.<span class="tk-fn">error</span>(<span class="tk-str">'Redis:'</span>, error.message)
+    })
 
-<span class="tk-kw">await</span> client.<span class="tk-fn">connect</span>();
+    <span class="cm">// Conecta só no primeiro uso; se falhar, a próxima chamada tenta de novo</span>
+    <span class="tk-kw">let</span> connecting = <span class="tk-kw">null</span>
 
-<span class="tk-kw">export</span> <span class="tk-kw">default</span> client;</code></pre></div>
-<p>No <code>docker-compose.yml</code>, o <code>nodeweb</code> ganha <code>REDIS_HOST: redis_host</code> e <code>REDIS_PORT: 6379</code> no <code>environment</code>, e entra no <code>depends_on</code> do Redis.</p>
-<h3 id="s4-6-a-rota-pesada-com-cache-aside"><span class="hn">4.6</span>A Rota Pesada com Cache-Aside</h3>
-<p>A rota <code>GET /api/relatorio</code> faz a agregação, com o interruptor <code>cache:ativo</code> (uma chave no próprio Redis) que o professor liga e desliga <strong>sem reiniciar nada</strong>. Sem <code>else</code>: cada desvio sai com <code>return</code>.</p>
+    <span class="tk-kw">const</span> connect = () =&gt; {
+        connecting = connecting ?? client.<span class="tk-fn">connect</span>().<span class="tk-kw">catch</span>((error) =&gt; {
+            connecting = <span class="tk-kw">null</span>
+            <span class="tk-kw">throw</span> error
+        })
+
+        <span class="tk-kw">return</span> connecting
+    }
+
+    <span class="tk-kw">const</span> get = <span class="tk-kw">async</span> (key) =&gt; {
+        <span class="tk-kw">await</span> <span class="tk-fn">connect</span>()
+        <span class="tk-kw">return</span> client.<span class="tk-fn">get</span>(key)
+    }
+
+    <span class="cm">// ttlSeconds: a chave expira sozinha (o TTL do cache)</span>
+    <span class="tk-kw">const</span> set = <span class="tk-kw">async</span> (key, value, ttlSeconds) =&gt; {
+        <span class="tk-kw">await</span> <span class="tk-fn">connect</span>()
+        <span class="tk-kw">return</span> client.<span class="tk-fn">set</span>(key, value, { expiration: { <span class="tk-kw">type</span>: <span class="tk-str">'EX'</span>, value: ttlSeconds } })
+    }
+
+    <span class="tk-kw">const</span> del = <span class="tk-kw">async</span> (key) =&gt; {
+        <span class="tk-kw">await</span> <span class="tk-fn">connect</span>()
+        <span class="tk-kw">return</span> client.<span class="tk-fn">del</span>(key)
+    }
+
+    <span class="tk-kw">return</span> { get, set, del }
+})()</code></pre></div>
+<p>No <code>docker-compose.yml</code>, o <code>nodeweb</code>, o <code>nodecommand</code> e os workers ganham <code>REDIS_HOST: redis_host</code> e <code>REDIS_PORT: 6379</code> no <code>environment</code> e entram no <code>depends_on</code> do Redis. A variável do <strong>host</strong> se chama <code>REDIS_HOST_PORT</code> (e não <code>REDIS_PORT</code>) para não colidir com a porta <strong>interna</strong> que os apps usam.</p>
+<h3 id="s4-7-a-rota-pesada-com-cache-aside"><span class="hn">4.7</span>A Rota Pesada com Cache-Aside</h3>
+<p>A rota <code>GET /api/relatorio</code> devolve o ranking do chat, com o interruptor <code>cache:ativo</code> (uma chave no próprio Redis) que o professor liga e desliga <strong>sem reiniciar nada</strong>. Sem <code>else</code>: cada desvio sai com <code>return</code>. A consulta cara fica num <em>service</em>:</p>
+<div class="vsc ed"><div class="vsc-bar"><span class="vsc-dots"><i></i><i></i><i></i></span><span class="vsc-tit">src/app/Services/ChatReportService.js</span><span class="vsc-lang">js</span></div><pre class="code"><code><span class="cm">// src/app/Services/ChatReportService.js</span>
+<span class="tk-kw">import</span> { QueryTypes } <span class="tk-kw">from</span> <span class="tk-str">'sequelize'</span>
+<span class="tk-kw">import</span> sequelize <span class="tk-kw">from</span> <span class="tk-str">'../../database/connections/sequelize.js'</span>
+
+<span class="tk-kw">export</span> <span class="tk-kw">default</span> {
+    <span class="tk-kw">async</span> <span class="tk-fn">ranking</span>() {
+        <span class="tk-kw">return</span> sequelize.<span class="tk-fn">query</span>(
+            `SELECT name,
+                    <span class="tk-fn">COUNT</span>(*) AS total,
+                    <span class="tk-fn">MAX</span>(date) AS last_message_at
+               FROM messages
+              GROUP BY name
+              ORDER BY total DESC
+              LIMIT <span class="tk-num">10</span>`,
+            { <span class="tk-kw">type</span>: QueryTypes.SELECT }
+        )
+    }
+}</code></pre></div>
 <div class="vsc ed"><div class="vsc-bar"><span class="vsc-dots"><i></i><i></i><i></i></span><span class="vsc-tit">src/app/Http/Controllers/ReportController.js</span><span class="vsc-lang">js</span></div><pre class="code"><code><span class="cm">// src/app/Http/Controllers/ReportController.js</span>
-<span class="tk-kw">import</span> { QueryTypes } <span class="tk-kw">from</span> <span class="tk-str">'sequelize'</span>;
-<span class="tk-kw">import</span> sequelize <span class="tk-kw">from</span> <span class="tk-str">'../../../database/connections/sequelize.js'</span>;
-<span class="tk-kw">import</span> redis <span class="tk-kw">from</span> <span class="tk-str">'../../../database/connections/redis.js'</span>;
-<span class="tk-kw">import</span> { cacheRequests } <span class="tk-kw">from</span> <span class="tk-str">'../../../utils/metrics.js'</span>;
+<span class="tk-kw">import</span> redis <span class="tk-kw">from</span> <span class="tk-str">'../../../database/connections/redis.js'</span>
+<span class="tk-kw">import</span> ChatReportService <span class="tk-kw">from</span> <span class="tk-str">'../../Services/ChatReportService.js'</span>
+<span class="tk-kw">import</span> { cacheRequests } <span class="tk-kw">from</span> <span class="tk-str">'../../../utils/metrics.js'</span>
 
-<span class="tk-kw">const</span> CACHE_KEY = <span class="tk-str">'report:tasks-by-user'</span>;
-<span class="tk-kw">const</span> CACHE_TTL_SECONDS = <span class="tk-num">30</span>;
+<span class="tk-kw">const</span> CACHE_KEY = <span class="tk-str">'report:chat-ranking'</span>
+<span class="tk-kw">const</span> CACHE_TTL_SECONDS = <span class="tk-num">30</span>
 
 <span class="tk-kw">export</span> <span class="tk-kw">default</span> <span class="tk-kw">async</span> <span class="tk-kw">function</span> <span class="tk-fn">ReportController</span>(request, response) {
-    <span class="tk-kw">const</span> isCacheOn = (<span class="tk-kw">await</span> redis.<span class="tk-fn">get</span>(<span class="tk-str">'cache:ativo'</span>)) === <span class="tk-str">'1'</span>;
+    <span class="tk-kw">try</span> {
+        <span class="tk-kw">const</span> isCacheOn = (<span class="tk-kw">await</span> redis.<span class="tk-fn">get</span>(<span class="tk-str">'cache:ativo'</span>)) === <span class="tk-str">'1'</span>
 
-    <span class="tk-kw">if</span> (isCacheOn) {
-        <span class="tk-kw">const</span> cached = <span class="tk-kw">await</span> redis.<span class="tk-fn">get</span>(CACHE_KEY);
+        <span class="tk-kw">if</span> (isCacheOn) {
+            <span class="tk-kw">const</span> cached = <span class="tk-kw">await</span> redis.<span class="tk-fn">get</span>(CACHE_KEY)
 
-        <span class="tk-kw">if</span> (cached) {
-            cacheRequests.<span class="tk-fn">inc</span>({ result: <span class="tk-str">'hit'</span> });
-            <span class="tk-kw">return</span> response.<span class="tk-fn">json</span>(JSON.<span class="tk-fn">parse</span>(cached));
+            <span class="tk-kw">if</span> (cached) {
+                cacheRequests.<span class="tk-fn">inc</span>({ result: <span class="tk-str">'hit'</span> })
+                response.<span class="tk-fn">set</span>(<span class="tk-str">'X-Cache'</span>, <span class="tk-str">'HIT'</span>)
+                <span class="tk-kw">return</span> response.<span class="tk-fn">json</span>(JSON.<span class="tk-fn">parse</span>(cached))
+            }
         }
+
+        <span class="tk-kw">const</span> ranking = <span class="tk-kw">await</span> ChatReportService.<span class="tk-fn">ranking</span>()
+
+        <span class="tk-kw">if</span> (isCacheOn) {
+            <span class="tk-kw">await</span> redis.<span class="tk-fn">set</span>(CACHE_KEY, JSON.<span class="tk-fn">stringify</span>(ranking), CACHE_TTL_SECONDS)
+        }
+
+        cacheRequests.<span class="tk-fn">inc</span>({ result: <span class="tk-str">'miss'</span> })
+        response.<span class="tk-fn">set</span>(<span class="tk-str">'X-Cache'</span>, <span class="tk-str">'MISS'</span>)
+        <span class="tk-kw">return</span> response.<span class="tk-fn">json</span>(ranking)
+    } <span class="tk-kw">catch</span> (error) {
+        console.<span class="tk-fn">error</span>(error)
+
+        <span class="tk-kw">return</span> response.<span class="tk-fn">status</span>(<span class="tk-num">500</span>).<span class="tk-fn">json</span>({
+            error: <span class="tk-str">'Internal server error'</span>
+        })
     }
-
-    cacheRequests.<span class="tk-fn">inc</span>({ result: <span class="tk-str">'miss'</span> });
-
-    <span class="cm">// a consulta cara: varre a tabela inteira e agrupa</span>
-    <span class="tk-kw">const</span> report = <span class="tk-kw">await</span> sequelize.<span class="tk-fn">query</span>(
-        `SELECT id_user,
-                <span class="tk-fn">COUNT</span>(*) AS total,
-                <span class="tk-fn">COUNT</span>(*) FILTER (WHERE is_done) AS concluidas
-           FROM tasks
-          GROUP BY id_user
-          ORDER BY total DESC
-          LIMIT <span class="tk-num">10</span>`,
-        { <span class="tk-kw">type</span>: QueryTypes.SELECT }
-    );
-
-    <span class="tk-kw">if</span> (isCacheOn) {
-        <span class="tk-kw">await</span> redis.<span class="tk-fn">set</span>(CACHE_KEY, JSON.<span class="tk-fn">stringify</span>(report), { EX: CACHE_TTL_SECONDS });
-    }
-
-    <span class="tk-kw">return</span> response.<span class="tk-fn">json</span>(report);
 }</code></pre></div>
-<p>Com o cache <strong>desligado</strong>, toda requisição conta como <em>miss</em> e vai ao Postgres. Com ele <strong>ligado</strong>, só a primeira de cada janela de 30 segundos vai ao banco.</p>
-<p>Para a consulta ser realmente pesada, a tabela precisa de volume. Um seed grande (ajuste o intervalo de <code>id_user</code> para ids que existem na tabela <code>users</code>):</p>
-<div class="vsc ed"><div class="vsc-bar"><span class="vsc-dots"><i></i><i></i><i></i></span><span class="vsc-lang">sql</span></div><pre class="code"><code>INSERT INTO tasks (name, is_done, id_user, created_at, updated_at)
-SELECT <span class="tk-str">'Tarefa '</span> || n, (n % <span class="tk-num">3</span> = <span class="tk-num">0</span>), <span class="tk-num">1</span> + (n % <span class="tk-num">20</span>), NOW(), NOW()
-  FROM generate_series(<span class="tk-num">1</span>, <span class="tk-num">500000</span>) AS n;</code></pre></div>
-<p>E o interruptor, protegido por um segredo da variável de ambiente (<code>ADMIN_TOKEN</code>) para os alunos não o desligarem:</p>
+<p>O header <code>X-Cache: HIT</code> ou <code>MISS</code> diz <strong>de onde veio a resposta</strong>: o botão do chat (seção 6.2) o usa para contar os acertos. Com o cache <strong>desligado</strong>, toda requisição conta como <em>miss</em> e vai ao Postgres. Com ele <strong>ligado</strong>, só a primeira de cada janela de 30 segundos vai ao banco.</p>
+<p>O interruptor é protegido por um segredo da variável de ambiente (<code>ADMIN_TOKEN</code>), para os alunos não o desligarem. Sem <code>ADMIN_TOKEN</code> configurado, <strong>ninguém</strong> entra:</p>
 <div class="vsc ed"><div class="vsc-bar"><span class="vsc-dots"><i></i><i></i><i></i></span><span class="vsc-tit">src/app/Http/Middlewares/AdminMiddleware.js</span><span class="vsc-lang">js</span></div><pre class="code"><code><span class="cm">// src/app/Http/Middlewares/AdminMiddleware.js</span>
 <span class="tk-kw">export</span> <span class="tk-kw">default</span> <span class="tk-kw">function</span> <span class="tk-fn">AdminMiddleware</span>(request, response, next) {
-    <span class="tk-kw">if</span> (request.headers[<span class="tk-str">'x-admin-token'</span>] !== process.env.ADMIN_TOKEN) {
-        <span class="tk-kw">return</span> response.<span class="tk-fn">status</span>(<span class="tk-num">401</span>).<span class="tk-fn">json</span>({ error: <span class="tk-str">'Unauthorized'</span> });
+    <span class="tk-kw">const</span> token = process.env.ADMIN_TOKEN
+
+    <span class="tk-kw">if</span> (!token || request.headers[<span class="tk-str">'x-admin-token'</span>] !== token) {
+        <span class="tk-kw">return</span> response.<span class="tk-fn">status</span>(<span class="tk-num">401</span>).<span class="tk-fn">json</span>({ error: <span class="tk-str">'Unauthorized'</span> })
     }
 
-    <span class="tk-kw">return</span> <span class="tk-fn">next</span>();
+    <span class="tk-kw">return</span> <span class="tk-fn">next</span>()
 }</code></pre></div>
 <div class="vsc ed"><div class="vsc-bar"><span class="vsc-dots"><i></i><i></i><i></i></span><span class="vsc-tit">src/app/Http/Controllers/ToggleCacheController.js</span><span class="vsc-lang">js</span></div><pre class="code"><code><span class="cm">// src/app/Http/Controllers/ToggleCacheController.js</span>
-<span class="tk-kw">import</span> redis <span class="tk-kw">from</span> <span class="tk-str">'../../../database/connections/redis.js'</span>;
+<span class="tk-kw">import</span> redis <span class="tk-kw">from</span> <span class="tk-str">'../../../database/connections/redis.js'</span>
 
 <span class="tk-kw">export</span> <span class="tk-kw">default</span> <span class="tk-kw">async</span> <span class="tk-kw">function</span> <span class="tk-fn">ToggleCacheController</span>(request, response) {
-    <span class="tk-kw">const</span> isActive = request.body.ativo === <span class="tk-kw">true</span>;
+    <span class="tk-kw">try</span> {
+        <span class="tk-kw">const</span> isActive = request.body?.ativo === <span class="tk-kw">true</span>
 
-    <span class="tk-kw">await</span> redis.<span class="tk-fn">set</span>(<span class="tk-str">'cache:ativo'</span>, isActive ? <span class="tk-str">'1'</span> : <span class="tk-str">'0'</span>);
+        <span class="cm">// a flag vale por 24 h; depois expira e o cache volta a ficar desligado</span>
+        <span class="tk-kw">await</span> redis.<span class="tk-fn">set</span>(<span class="tk-str">'cache:ativo'</span>, isActive ? <span class="tk-str">'1'</span> : <span class="tk-str">'0'</span>, <span class="tk-num">60</span> * <span class="tk-num">60</span> * <span class="tk-num">24</span>)
 
-    <span class="tk-kw">return</span> response.<span class="tk-fn">json</span>({ ativo: isActive });
+        <span class="tk-kw">return</span> response.<span class="tk-fn">json</span>({ ativo: isActive })
+    } <span class="tk-kw">catch</span> (error) {
+        console.<span class="tk-fn">error</span>(error)
+
+        <span class="tk-kw">return</span> response.<span class="tk-fn">status</span>(<span class="tk-num">500</span>).<span class="tk-fn">json</span>({
+            error: <span class="tk-str">'Internal server error'</span>
+        })
+    }
 }</code></pre></div>
+<div class="vsc ed"><div class="vsc-bar"><span class="vsc-dots"><i></i><i></i><i></i></span><span class="vsc-tit">src/routes/router.js (acrescentar)</span><span class="vsc-lang">js</span></div><pre class="code"><code><span class="cm">// src/routes/router.js (acrescentar)</span>
+router.<span class="tk-fn">get</span>(<span class="tk-str">'/api/relatorio'</span>, ReportController);
+router.<span class="tk-fn">post</span>(<span class="tk-str">'/api/admin/cache'</span>, AdminMiddleware, ToggleCacheController);</code></pre></div>
 <p>O professor liga e desliga do terminal, na frente da sala:</p>
 <div class="vsc term"><div class="vsc-bar"><span class="vsc-dots"><i></i><i></i><i></i></span><span class="vsc-lang">terminal</span></div><pre class="code"><code><span class="cm"># liga o cache</span>
 <span class="ps">$ </span><span class="tk-cmd">curl</span> <span class="tk-flag">-X</span> POST http://localhost:<span class="tk-num">8080</span>/api/admin/cache <span class="tk-flag">-H</span> <span class="tk-str">"x-admin-token: $ADMIN_TOKEN"</span> <span class="tk-flag">-H</span> <span class="tk-str">"Content-Type: application/json"</span> <span class="tk-flag">-d</span> <span class="tk-str">'{"ativo": true}'</span>
 
 <span class="cm"># desliga o cache</span>
-<span class="ps">$ </span><span class="tk-cmd">curl</span> <span class="tk-flag">-X</span> POST http://localhost:<span class="tk-num">8080</span>/api/admin/cache <span class="tk-flag">-H</span> <span class="tk-str">"x-admin-token: $ADMIN_TOKEN"</span> <span class="tk-flag">-H</span> <span class="tk-str">"Content-Type: application/json"</span> <span class="tk-flag">-d</span> <span class="tk-str">'{"ativo": false}'</span></code></pre></div>
+<span class="ps">$ </span><span class="tk-cmd">curl</span> <span class="tk-flag">-X</span> POST http://localhost:<span class="tk-num">8080</span>/api/admin/cache <span class="tk-flag">-H</span> <span class="tk-str">"x-admin-token: $ADMIN_TOKEN"</span> <span class="tk-flag">-H</span> <span class="tk-str">"Content-Type: application/json"</span> <span class="tk-flag">-d</span> <span class="tk-str">'{"ativo": false}'</span>
+
+<span class="cm"># confere o estado: 1 = ligado, 0 = desligado, vazio = nunca ligado (vale desligado)</span>
+<span class="ps">$ </span><span class="tk-cmd">redis</span>-cli <span class="tk-flag">-p</span> <span class="tk-num">6375</span> get cache:ativo</code></pre></div>
 <h2 id="s5-observabilidade"><span class="hn">5</span>Observabilidade</h2>
 <h3 id="s5-1-enxergar-para-decidir"><span class="hn">5.1</span>Enxergar Para Decidir</h3>
 <p>O conceito de observabilidade já foi visto em outra aula; aqui ele serve a um propósito concreto: <strong>provar</strong> que a decisão de arquitetura funcionou. Dizer "o cache deixa mais rápido" é opinião. Mostrar no painel a latência <strong>antes e depois</strong> é evidência. Três números bastam para a demonstração:</p>
@@ -236,7 +358,7 @@ SELECT <span class="tk-str">'Tarefa '</span> || n, (n % <span class="tk-num">3</
 <div class="tbl vs"><table><thead><tr><th class=""></th><th class="fila">Prometheus</th><th class="exch">Grafana</th></tr></thead><tbody><tr><td class=" prim">Papel</td><td class="fila"><strong>coleta e guarda</strong> as métricas</td><td class="exch"><strong>mostra</strong> as métricas</td></tr><tr><td class=" prim">Como funciona</td><td class="fila">a cada N segundos faz <code>GET /metrics</code> no nodeweb (modelo <em>pull</em>) e grava</td><td class="exch">consulta o Prometheus (<em>data source</em>) e desenha gráficos</td></tr><tr><td class=" prim">Guarda dado?</td><td class="fila">sim, séries temporais (valor + horário)</td><td class="exch"><strong>não</strong></td></tr><tr><td class=" prim">Linguagem</td><td class="fila">PromQL</td><td class="exch">usa o PromQL do Prometheus</td></tr></tbody></table></div>
 <p>O fluxo: o <code>nodeweb</code> <strong>expõe</strong> o <code>/metrics</code>, o Prometheus <strong>coleta</strong>, o Grafana <strong>desenha</strong>.</p>
 <h3 id="s5-3-expondo-as-métricas-no-express"><span class="hn">5.3</span>Expondo as Métricas no Express</h3>
-<p>A biblioteca <code>prom-client</code> cria as métricas e formata o texto que o Prometheus lê. Duas métricas próprias: um <strong>histograma</strong> da duração das requisições e um <strong>contador</strong> de acertos e erros do cache.</p>
+<p>A biblioteca <code>prom-client</code> cria as métricas e formata o texto que o Prometheus lê. As métricas ficam <strong>na memória do processo</strong> <code>nodeweb</code> (poucos números, que só crescem), e o Prometheus <strong>vem buscá-las</strong>. Duas métricas próprias: um <strong>histograma</strong> da duração das requisições e um <strong>contador</strong> de acertos e erros do cache.</p>
 <div class="vsc ed"><div class="vsc-bar"><span class="vsc-dots"><i></i><i></i><i></i></span><span class="vsc-tit">src/utils/metrics.js</span><span class="vsc-lang">js</span></div><pre class="code"><code><span class="cm">// src/utils/metrics.js</span>
 <span class="tk-kw">import</span> { Registry, Histogram, Counter, collectDefaultMetrics } <span class="tk-kw">from</span> <span class="tk-str">'prom-client'</span>;
 
@@ -259,35 +381,36 @@ SELECT <span class="tk-str">'Tarefa '</span> || n, (n % <span class="tk-num">3</
     labelNames: [<span class="tk-str">'result'</span>],
     registers: [register]
 });</code></pre></div>
-<p>Um middleware mede cada requisição, e a rota <code>/metrics</code> entrega o texto:</p>
+<p>Um middleware mede cada requisição, e a rota <code>/metrics</code> entrega o texto. Cuidado com o <em>label</em> <code>route</code>: ele usa o <strong>padrão da rota</strong> (<code>/api/relatorio</code>), nunca a URL com ids, porque cada valor novo de <em>label</em> vira uma <strong>série nova</strong> e a memória cresceria sem parar:</p>
 <div class="vsc ed"><div class="vsc-bar"><span class="vsc-dots"><i></i><i></i><i></i></span><span class="vsc-tit">src/app/Http/Middlewares/MetricsMiddleware.js</span><span class="vsc-lang">js</span></div><pre class="code"><code><span class="cm">// src/app/Http/Middlewares/MetricsMiddleware.js</span>
-<span class="tk-kw">import</span> { httpDuration } <span class="tk-kw">from</span> <span class="tk-str">'../../../utils/metrics.js'</span>;
+<span class="tk-kw">import</span> { httpDuration } <span class="tk-kw">from</span> <span class="tk-str">'../../../utils/metrics.js'</span>
 
 <span class="tk-kw">export</span> <span class="tk-kw">default</span> <span class="tk-kw">function</span> <span class="tk-fn">MetricsMiddleware</span>(request, response, next) {
-    <span class="tk-kw">const</span> stopTimer = httpDuration.<span class="tk-fn">startTimer</span>();
+    <span class="tk-kw">const</span> stopTimer = httpDuration.<span class="tk-fn">startTimer</span>()
 
     response.<span class="tk-fn">on</span>(<span class="tk-str">'finish'</span>, () =&gt; {
-        <span class="tk-kw">const</span> route = request.route?.path || <span class="tk-str">'outras'</span>;
+        <span class="tk-kw">const</span> route = request.route ? request.baseUrl + request.route.path : <span class="tk-str">'outras'</span>
 
         <span class="tk-fn">stopTimer</span>({
             method: request.method,
             route: route,
             status: response.statusCode
-        });
-    });
+        })
+    })
 
-    <span class="tk-kw">return</span> <span class="tk-fn">next</span>();
+    <span class="tk-kw">return</span> <span class="tk-fn">next</span>()
+}</code></pre></div>
+<div class="vsc ed"><div class="vsc-bar"><span class="vsc-dots"><i></i><i></i><i></i></span><span class="vsc-tit">src/app/Http/Controllers/MetricsController.js</span><span class="vsc-lang">js</span></div><pre class="code"><code><span class="cm">// src/app/Http/Controllers/MetricsController.js</span>
+<span class="tk-kw">import</span> { register } <span class="tk-kw">from</span> <span class="tk-str">'../../../utils/metrics.js'</span>
+
+<span class="tk-kw">export</span> <span class="tk-kw">default</span> <span class="tk-kw">async</span> <span class="tk-kw">function</span> <span class="tk-fn">MetricsController</span>(request, response) {
+    response.<span class="tk-fn">set</span>(<span class="tk-str">'Content-Type'</span>, register.contentType)
+
+    <span class="tk-kw">return</span> response.<span class="tk-fn">end</span>(<span class="tk-kw">await</span> register.<span class="tk-fn">metrics</span>())
 }</code></pre></div>
 <div class="vsc ed"><div class="vsc-bar"><span class="vsc-dots"><i></i><i></i><i></i></span><span class="vsc-tit">src/routes/router.js (acrescentar)</span><span class="vsc-lang">js</span></div><pre class="code"><code><span class="cm">// src/routes/router.js (acrescentar)</span>
-<span class="tk-kw">import</span> { register } <span class="tk-kw">from</span> <span class="tk-str">'../utils/metrics.js'</span>;
-<span class="tk-kw">import</span> MetricsMiddleware <span class="tk-kw">from</span> <span class="tk-str">'../app/Http/Middlewares/MetricsMiddleware.js'</span>;
-
 router.<span class="tk-fn">use</span>(MetricsMiddleware);
-
-router.<span class="tk-fn">get</span>(<span class="tk-str">'/metrics'</span>, <span class="tk-kw">async</span> (request, response) =&gt; {
-    response.<span class="tk-fn">set</span>(<span class="tk-str">'Content-Type'</span>, register.contentType);
-    <span class="tk-kw">return</span> response.<span class="tk-fn">end</span>(<span class="tk-kw">await</span> register.<span class="tk-fn">metrics</span>());
-});</code></pre></div>
+router.<span class="tk-fn">get</span>(<span class="tk-str">'/metrics'</span>, MetricsController);</code></pre></div>
 <h3 id="s5-4-o-metrics-não-pode-ser-público"><span class="hn">5.4</span>O /metrics Não Pode Ser Público</h3>
 <p>O Nginx repassa ao Node <strong>tudo que não é arquivo estático</strong>, e isso inclui o <code>/metrics</code>: qualquer pessoa na sala conseguiria lê-lo pelo navegador. A correção é <strong>bloquear no Nginx</strong>. O Prometheus <strong>não passa pelo Nginx</strong>: ele coleta direto no <code>nodeweb</code>, pelo <code>data-network</code>.</p>
 <div class="vsc ed"><div class="vsc-bar"><span class="vsc-dots"><i></i><i></i><i></i></span><span class="vsc-lang">nginx</span></div><pre class="code"><code># default.conf.template (antes do <span class="tk-str">"location /"</span>)
@@ -295,21 +418,27 @@ location = /metrics {
     return <span class="tk-num">404</span>;  # o Prometheus coleta direto no nodeweb, pela data-network
 }</code></pre></div>
 <h3 id="s5-5-prometheus-e-grafana-no-compose"><span class="hn">5.5</span>Prometheus e Grafana no Compose</h3>
-<p>Os dois containers entram no compose; as configurações ficam em arquivos montados como volume, para o painel subir <strong>pronto</strong>, sem clicar em nada:</p>
+<p>Os dois containers entram no compose; as configurações ficam em arquivos montados como pasta do seu PC, para o painel subir <strong>pronto</strong>, sem clicar em nada. O histórico do Prometheus e o banco interno do Grafana (usuários e senha) ficam em <strong>volumes</strong>, para sobreviverem a um <code>docker compose down</code>:</p>
 <div class="vsc ed"><div class="vsc-bar"><span class="vsc-dots"><i></i><i></i><i></i></span><span class="vsc-tit">docker/prometheus/prometheus.yml</span><span class="vsc-lang">yaml</span></div><pre class="code"><code><span class="cm"># docker/prometheus/prometheus.yml</span>
 <span class="tk-key">global</span>:
   scrape_interval: 5s              <span class="cm"># coleta a cada 5 segundos</span>
 
 <span class="tk-key">scrape_configs</span>:
   - job_name: nodeweb
+    metrics_path: /metrics
     static_configs:
-      - targets: [<span class="tk-str">"nodeweb_host:3000"</span>]   <span class="cm"># nome do alias na data-network</span></code></pre></div>
+      - targets: [<span class="tk-str">"nodeweb_host:3000"</span>]   <span class="cm"># alias do nodeweb na data-network (não passa pelo nginx)</span></code></pre></div>
 <div class="vsc ed"><div class="vsc-bar"><span class="vsc-dots"><i></i><i></i><i></i></span><span class="vsc-lang">yaml</span></div><pre class="code"><code><span class="cm"># docker-compose.yml (acrescentar)</span>
   prometheus-container:
     image: prom/prometheus:v3.<span class="tk-num">5.0</span>
     restart: unless-stopped
+    depends_on:
+      - nodeweb-container
+    ports:
+      - <span class="tk-str">"${PROMETHEUS_PORT:-9090}:9090"</span>
     volumes:
-      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml   <span class="cm"># configuração (lê)</span>
+      - prometheus-volume:/prometheus                                       <span class="cm"># as séries (escreve)</span>
     networks:
       data-network:
         aliases:
@@ -318,27 +447,56 @@ location = /metrics {
   grafana-container:
     image: grafana/grafana:<span class="tk-num">12.1</span>.<span class="tk-num">0</span>
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD}
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      POSTGRES_HOST: postgres_host
+      POSTGRES_PORT: <span class="tk-num">5432</span>
     ports:
-      - <span class="tk-str">"${GRAFANA_PORT}:3000"</span>
+      - <span class="tk-str">"${GRAFANA_PORT:-3002}:3000"</span>
     volumes:
-      - ./docker/grafana/provisioning:/etc/grafana/provisioning
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning   <span class="cm"># fontes de dados e dashboard</span>
+      - grafana-volume:/var/lib/grafana                           <span class="cm"># usuários, senha, preferências</span>
     networks:
-      - edge-network
-      - data-network</code></pre></div>
-<div class="vsc ed"><div class="vsc-bar"><span class="vsc-dots"><i></i><i></i><i></i></span><span class="vsc-tit">docker/grafana/provisioning/datasources/prometheus.yml</span><span class="vsc-lang">yaml</span></div><pre class="code"><code><span class="cm"># docker/grafana/provisioning/datasources/prometheus.yml</span>
+      edge-network:
+        aliases:
+          - grafana_host
+      data-network:
+        aliases:
+          - grafana_host
+
+<span class="tk-key">volumes</span>:
+  prometheus-volume:
+  grafana-volume:</code></pre></div>
+<p>O Grafana está nos <strong>dois</strong> networks: na borda, porque o professor o abre no navegador; nos dados, porque ele precisa alcançar o Prometheus e o Postgres. O acesso é <code>http://localhost:3002</code>, com usuário <code>admin</code> e a senha de <code>GRAFANA_PASSWORD</code> (padrão <code>admin</code>; ela só vale se definida <strong>antes</strong> da primeira subida, porque depois fica gravada no <code>grafana-volume</code>).</p>
+<p>O Grafana <strong>não guarda nada</strong> das métricas: ele só consulta. As <strong>fontes de dados</strong> são criadas na subida, por <em>provisioning</em>: o Prometheus (as métricas) e o Postgres (as mensagens do chat):</p>
+<div class="vsc ed"><div class="vsc-bar"><span class="vsc-dots"><i></i><i></i><i></i></span><span class="vsc-tit">docker/grafana/provisioning/datasources/datasources.yml</span><span class="vsc-lang">yaml</span></div><pre class="code"><code><span class="cm"># docker/grafana/provisioning/datasources/datasources.yml</span>
 <span class="tk-key">apiVersion</span>: <span class="tk-num">1</span>
 
 <span class="tk-key">datasources</span>:
   - name: Prometheus
+    uid: prometheus
     type: prometheus
     access: proxy
     url: http://prometheus_host:<span class="tk-num">9090</span>
-    isDefault: true</code></pre></div>
-<p>O Grafana está nos <strong>dois</strong> networks: na borda, porque o professor o abre no navegador; nos dados, porque ele precisa alcançar o Prometheus.</p>
+    isDefault: true
+
+  - name: Postgres
+    uid: postgres
+    type: grafana-postgresql-datasource
+    access: proxy
+    url: postgres_host:<span class="tk-num">5432</span>
+    user: $POSTGRES_USER
+    jsonData:
+      database: $POSTGRES_DB
+      sslmode: disable
+    secureJsonData:
+      password: $POSTGRES_PASSWORD</code></pre></div>
+<p>O dashboard também vem pronto, em JSON (<code>docker/grafana/provisioning/dashboards/cache-observabilidade.json</code>). <strong>Cada painel é uma consulta que escrevemos</strong>, apontando para uma das duas fontes: <strong>PromQL</strong> para o Prometheus e <strong>SQL</strong> para o Postgres.</p>
 <h3 id="s5-6-as-consultas-do-painel"><span class="hn">5.6</span>As Consultas do Painel</h3>
-<p>O painel tem três gráficos, cada um com uma consulta em PromQL:</p>
+<p>O dashboard tem seis painéis. Os quatro primeiros usam PromQL no Prometheus; os dois últimos usam SQL no Postgres:</p>
 <div class="vsc ed"><div class="vsc-bar"><span class="vsc-dots"><i></i><i></i><i></i></span><span class="vsc-lang">text</span></div><pre class="code"><code># requisições por segundo (média do último minuto)
 sum(rate(http_request_duration_seconds_count[1m]))
 
@@ -346,73 +504,93 @@ sum(rate(http_request_duration_seconds_count[1m]))
 histogram_quantile(<span class="tk-num">0.95</span>, sum(rate(http_request_duration_seconds_bucket[1m])) by (le))
 
 # taxa de acerto do cache (<span class="tk-num">0</span> a <span class="tk-num">1</span>)
-sum(rate(cache_requests_total{result=<span class="tk-str">"hit"</span>}[1m])) / sum(rate(cache_requests_total[1m]))</code></pre></div>
+sum(rate(cache_requests_total{result=<span class="tk-str">"hit"</span>}[1m])) / sum(rate(cache_requests_total[1m]))
+
+# hits e misses por segundo (um gráfico com as duas linhas)
+sum(rate(cache_requests_total[1m])) by (result)</code></pre></div>
+<div class="vsc ed"><div class="vsc-bar"><span class="vsc-dots"><i></i><i></i><i></i></span><span class="vsc-lang">sql</span></div><pre class="code"><code><span class="cm">-- mensagens por minuto (fonte Postgres)</span>
+SELECT date_trunc(<span class="tk-str">'minute'</span>, date) AS time, COUNT(*) AS mensagens
+  FROM messages
+ GROUP BY <span class="tk-num">1</span>
+ ORDER BY <span class="tk-num">1</span>;
+
+<span class="cm">-- log das mensagens do chat: as últimas gravadas pelo job save-message</span>
+SELECT date, name, ip, message FROM messages ORDER BY date DESC LIMIT <span class="tk-num">100</span>;</code></pre></div>
 <p>A latência aparece como <strong>p95</strong> e não como média porque a média <strong>esconde as requisições lentas</strong>: se 95 requisições levam 10 ms e 5 levam 2 segundos, a média parece aceitável, mas 5% dos usuários sentiram uma lentidão enorme. O histograma guarda a <strong>contagem por faixa de tempo</strong> (<em>buckets</em>), e é isso que permite calcular o percentil.</p>
+<p>Duas perguntas que costumam surgir: o **Prometheus não lê <code>stderr</code> nem recebe nada**: quem busca é ele (<em>pull</em>), no <code>/metrics</code>; e os contadores <strong>não são zerados</strong> quando ele coleta: o valor acumulado fica na memória do <code>nodeweb</code>, e o histórico fica no disco do Prometheus (<code>prometheus-volume</code>). Se o <code>nodeweb</code> reiniciar, o contador volta a zero, e o <code>rate()</code> trata isso como reinício.</p>
 <h2 id="s6-a-demonstração-a-sala-vira-o-tráfego"><span class="hn">6</span>A Demonstração: a Sala Vira o Tráfego</h2>
 <h3 id="s6-1-o-roteiro"><span class="hn">6.1</span>O Roteiro</h3>
 <p>Todos os alunos abrem a aplicação pelo IP do notebook do professor na rede da sala. O painel do Grafana fica no projetor. O roteiro tem três atos:</p>
-<ol><li><strong>Cache desligado:</strong> a sala toda clica em "disparar 50 requisições". A taxa de requisições sobe, a latência p95 dispara, a taxa de acerto do cache fica em <strong>zero</strong>, e o Postgres é martelado a cada clique;</li><li><strong>Cache ligado:</strong> o professor liga o interruptor (<code>curl</code> da seção 4.6). Nada mais muda: o mesmo botão, o mesmo código. A taxa de acerto sobe, a latência <strong>despenca</strong>, o Postgres respira;</li><li><strong>A prova de segmentação:</strong> cada aluno tenta, do próprio notebook, conectar na porta <code>5432</code> do notebook do professor. Com o <code>ports:</code> removido (seção 3.5), a conexão é <strong>recusada</strong>: só o Nginx é alcançável de fora.</li></ol>
+<ol><li><strong>Cache desligado:</strong> a sala toda clica em "disparar 50 requisições". A taxa de requisições sobe, a latência p95 dispara, a taxa de acerto do cache fica em <strong>zero</strong>, e o Postgres é martelado a cada clique;</li><li><strong>Cache ligado:</strong> o professor liga o interruptor (<code>curl</code> da seção 4.7). Nada mais muda: o mesmo botão, o mesmo código. A taxa de acerto sobe, a latência <strong>despenca</strong>, o Postgres respira;</li><li><strong>A prova de que network não é porta:</strong> cada aluno tenta, do próprio notebook, conectar na porta do Redis (<code>6375</code>) do notebook do professor. A conexão <strong>funciona</strong>, porque o <code>ports:</code> abriu a porta no host (seção 3.5), mesmo com o Redis na <code>data-network</code>. Para fechar, tira-se o <code>ports:</code>.</li></ol>
 <h3 id="s6-2-o-botão-no-react"><span class="hn">6.2</span>O Botão no React</h3>
-<p>O front dispara 50 requisições de uma vez e mostra o resumo na tela de <strong>cada aluno</strong>. Segue as convenções do código React do curso: só <code>const</code>, booleano com <code>is</code>, e o <em>handler</em> de clique <strong>explícito</strong>.</p>
+<p>O botão fica <strong>dentro do chat</strong>, abaixo da lista de quem está online. Ele dispara 50 requisições de uma vez e mostra o resumo na tela de <strong>cada aluno</strong>: quantas deram certo, quantas vieram do cache (pelo header <code>X-Cache</code>) e o tempo médio. Segue as convenções do código React do curso: só <code>const</code>, booleano com <code>is</code>, e o <em>handler</em> de clique <strong>explícito</strong>.</p>
 <div class="vsc ed"><div class="vsc-bar"><span class="vsc-dots"><i></i><i></i><i></i></span><span class="vsc-tit">src/resources/js/components/LoadButton.tsx</span><span class="vsc-lang">tsx</span></div><pre class="code"><code><span class="cm">// src/resources/js/components/LoadButton.tsx</span>
-<span class="tk-kw">import</span> { useState } <span class="tk-kw">from</span> <span class="tk-str">'react'</span>;
-<span class="tk-kw">import</span> axios <span class="tk-kw">from</span> <span class="tk-str">'axios'</span>;
+<span class="tk-kw">import</span> { useState } <span class="tk-kw">from</span> <span class="tk-str">"react"</span>
+<span class="tk-kw">import</span> axios <span class="tk-kw">from</span> <span class="tk-str">"axios"</span>
+
+<span class="tk-kw">type</span> Result = { ms: number, isHit: boolean } | <span class="tk-kw">null</span>
 
 <span class="tk-kw">type</span> Summary = {
-    ok: number;
-    errors: number;
-    average: number;
-};
+    ok: number
+    errors: number
+    hits: number
+    averageMs: number
+}
 
-<span class="tk-kw">const</span> TOTAL_REQUESTS = <span class="tk-num">50</span>;
+<span class="tk-kw">const</span> TOTAL_REQUESTS = <span class="tk-num">50</span>
 
-<span class="cm">// devolve o tempo da requisição em ms, ou null se falhou</span>
-<span class="tk-kw">const</span> measure = <span class="tk-kw">async</span> (): Promise&lt;number | <span class="tk-kw">null</span>&gt; =&gt; {
-    <span class="tk-kw">const</span> start = performance.<span class="tk-fn">now</span>();
+<span class="cm">// Uma requisição ao ranking do chat: devolve o tempo (ms) e se veio do cache (header X-Cache), ou null se falhou</span>
+<span class="tk-kw">async</span> <span class="tk-kw">function</span> <span class="tk-fn">measure</span>(): Promise&lt;Result&gt; {
+    <span class="tk-kw">const</span> start = performance.<span class="tk-fn">now</span>()
 
     <span class="tk-kw">try</span> {
-        <span class="tk-kw">await</span> axios.<span class="tk-fn">get</span>(<span class="tk-str">'/api/relatorio'</span>);
-        <span class="tk-kw">return</span> performance.<span class="tk-fn">now</span>() - start;
-    } <span class="tk-kw">catch</span> (error) {
-        <span class="tk-kw">return</span> <span class="tk-kw">null</span>;
+        <span class="tk-kw">const</span> response = <span class="tk-kw">await</span> axios.<span class="tk-fn">get</span>(<span class="tk-str">"/api/relatorio"</span>)
+
+        <span class="tk-kw">return</span> { ms: performance.<span class="tk-fn">now</span>() - start, isHit: response.headers[<span class="tk-str">"x-cache"</span>] === <span class="tk-str">"HIT"</span> }
+    } <span class="tk-kw">catch</span> {
+        <span class="tk-kw">return</span> <span class="tk-kw">null</span>
     }
-};
+}
 
-<span class="tk-kw">export</span> <span class="tk-kw">default</span> <span class="tk-kw">function</span> <span class="tk-fn">LoadButton</span>() {
-    <span class="tk-kw">const</span> [isLoading, setIsLoading] = <span class="tk-fn">useState</span>(<span class="tk-kw">false</span>);
-    <span class="tk-kw">const</span> [summary, setSummary] = useState&lt;Summary | <span class="tk-kw">null</span>&gt;(<span class="tk-kw">null</span>);
+<span class="tk-kw">export</span> <span class="tk-kw">function</span> <span class="tk-fn">LoadButton</span>() {
+    <span class="tk-kw">const</span> [isLoading, setIsLoading] = <span class="tk-fn">useState</span>(<span class="tk-kw">false</span>)
+    <span class="tk-kw">const</span> [summary, setSummary] = useState&lt;Summary | <span class="tk-kw">null</span>&gt;(<span class="tk-kw">null</span>)
 
-    <span class="tk-kw">const</span> handleClick = <span class="tk-kw">async</span> () =&gt; {
-        <span class="tk-fn">setIsLoading</span>(<span class="tk-kw">true</span>);
+    <span class="cm">// Clique: dispara TOTAL_REQUESTS requisições de uma vez e resume o resultado na tela</span>
+    <span class="tk-kw">async</span> <span class="tk-kw">function</span> <span class="tk-fn">aoDispararRequisicoes</span>() {
+        <span class="tk-fn">setIsLoading</span>(<span class="tk-kw">true</span>)
 
-        <span class="tk-kw">const</span> results = <span class="tk-kw">await</span> Promise.<span class="tk-fn">all</span>(
-            Array.<span class="tk-kw">from</span>({ length: TOTAL_REQUESTS }, () =&gt; <span class="tk-fn">measure</span>())
-        );
-
-        <span class="tk-kw">const</span> times = results.<span class="tk-fn">filter</span>((time): time is number =&gt; time !== <span class="tk-kw">null</span>);
-        <span class="tk-kw">const</span> total = times.<span class="tk-fn">reduce</span>((sum, time) =&gt; sum + time, <span class="tk-num">0</span>);
-        <span class="tk-kw">const</span> average = times.length &gt; <span class="tk-num">0</span> ? total / times.length : <span class="tk-num">0</span>;
+        <span class="tk-kw">const</span> results = <span class="tk-kw">await</span> Promise.<span class="tk-fn">all</span>(Array.<span class="tk-kw">from</span>({ length: TOTAL_REQUESTS }, () =&gt; <span class="tk-fn">measure</span>()))
+        <span class="tk-kw">const</span> done = results.<span class="tk-fn">filter</span>((result): result is NonNullable&lt;Result&gt; =&gt; result !== <span class="tk-kw">null</span>)
+        <span class="tk-kw">const</span> total = done.<span class="tk-fn">reduce</span>((sum, result) =&gt; sum + result.ms, <span class="tk-num">0</span>)
+        <span class="tk-kw">const</span> average = done.length &gt; <span class="tk-num">0</span> ? total / done.length : <span class="tk-num">0</span>
 
         <span class="tk-fn">setSummary</span>({
-            ok: times.length,
-            errors: TOTAL_REQUESTS - times.length,
-            average: Math.<span class="tk-fn">round</span>(average)
-        });
-
-        <span class="tk-fn">setIsLoading</span>(<span class="tk-kw">false</span>);
-    };
+            ok: done.length,
+            errors: TOTAL_REQUESTS - done.length,
+            hits: done.<span class="tk-fn">filter</span>(result =&gt; result.isHit).length,
+            averageMs: Math.<span class="tk-fn">round</span>(average)
+        })
+        <span class="tk-fn">setIsLoading</span>(<span class="tk-kw">false</span>)
+    }
 
     <span class="tk-kw">return</span> (
-        &lt;div&gt;
-            &lt;button onClick={handleClick} disabled={isLoading}&gt;
-                {isLoading ? <span class="tk-str">'Disparando...'</span> : <span class="tk-str">`Disparar ${TOTAL_REQUESTS} requisições`</span>}
-            &lt;/button&gt;
+        &lt;div className=<span class="tk-str">"card mt-3"</span>&gt;
+            &lt;div className=<span class="tk-str">"card-header"</span>&gt;&lt;strong&gt;Carga na API&lt;/strong&gt;&lt;/div&gt;
 
-            {summary &amp;&amp; (
-                &lt;p&gt;{summary.ok} ok, {summary.errors} erros, média de {summary.average} ms&lt;/p&gt;
-            )}
+            &lt;div className=<span class="tk-str">"card-body d-flex flex-column gap-2"</span>&gt;
+                &lt;button className=<span class="tk-str">"btn btn-warning"</span> <span class="tk-kw">type</span>=<span class="tk-str">"button"</span> disabled={isLoading} onClick={aoDispararRequisicoes}&gt;
+                    {isLoading ? <span class="tk-str">"Disparando..."</span> : <span class="tk-str">`Disparar ${TOTAL_REQUESTS} requisições`</span>}
+                &lt;/button&gt;
+
+                {summary &amp;&amp; (
+                    &lt;small className=<span class="tk-str">"text-muted"</span>&gt;
+                        {summary.ok} ok · {summary.errors} erros · {summary.hits} do cache · média de {summary.averageMs} ms
+                    &lt;/small&gt;
+                )}
+            &lt;/div&gt;
         &lt;/div&gt;
-    );
+    )
 }</code></pre></div>
 <p>O navegador limita as conexões simultâneas ao mesmo servidor (6 em HTTP/1.1), então as 50 requisições são <strong>enfileiradas pelo próprio navegador</strong>: o efeito de uma sala inteira disparando ao mesmo tempo vem da <strong>soma</strong> dos alunos, não de um aluno só.</p>
 <h3 id="s6-3-cuidados-com-a-rede-da-sala"><span class="hn">6.3</span>Cuidados Com a Rede da Sala</h3>

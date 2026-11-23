@@ -138,6 +138,8 @@ services:
 
   postgres-container:
     image: postgres:18
+    ports:
+      - "${POSTGRES_PORT}:5432"           # porta publicada no host (seção 3.5)
     networks:
       data-network:                       # só a rede de dados
         aliases:
@@ -146,6 +148,8 @@ services:
   redis-container:
     image: redis:7.4-alpine
     restart: unless-stopped
+    ports:
+      - "${REDIS_HOST_PORT:-6375}:6379"   # do host: localhost:6375; na rede: redis_host:6379
     networks:
       data-network:
         aliases:
@@ -178,25 +182,39 @@ Dois cuidados importantes:
 
 3.5 - Network Não é Porta Publicada
 
-Segmentar a rede protege o tráfego **entre containers**. Já o `ports:` do compose **publica a porta na máquina** (o *host*), e isso vale **independente do network**. Hoje o `docker-compose.yml` publica o `5432` do Postgres e as portas `5672` e `15672` do RabbitMQ: qualquer um que alcance o seu notebook pela rede da sala consegue conectar nelas.
+Segmentar a rede protege o tráfego **entre containers**. Já o `ports:` do compose **publica a porta na máquina** (o *host*), e isso vale **independente do network**. No nosso projeto várias portas estão publicadas **de propósito**, para o professor enxergar cada peça:
 
-Para o banco ficar mesmo **inacessível de fora**, não basta o network: é preciso **remover o `ports:`** dele. O acesso interno continua funcionando pelo network (`postgres_host:5432`); só o acesso externo some. É o mesmo raciocínio que já usamos no Elasticsearch, que **não tem `ports:`** de propósito.
+| Porta no host | Container | Para quê |
+| --- | --- | --- |
+| `8080` (`NGNIX_WEB_PORT`) | `nginx` | a aplicação |
+| `5172` | `nodevitehmr` | Vite em modo desenvolvimento |
+| `6789` (`POSTGRES_PORT`) | `postgres` | DBeaver, `psql` |
+| `5672` e `15672` | `rabbitmq` | AMQP e painel de administração |
+| `6375` (`REDIS_HOST_PORT`) | `redis` | `redis-cli`, RedisInsight |
+| `3002` (`GRAFANA_PORT`) | `grafana` | o painel |
+| `9090` (`PROMETHEUS_PORT`) | `prometheus` | *Status > Targets* e consultas PromQL |
+
+Isso tem um custo: qualquer pessoa que alcance o seu notebook pela rede da sala consegue conectar nessas portas, e o **Redis não tem senha**. O network não impede, porque o `ports:` abre uma porta **do host** para dentro do container.
+
+Para um banco ficar mesmo **inacessível de fora**, o caminho é **não ter `ports:`**: o acesso interno continua pelo network (`postgres_host:5432`) e só o acesso externo some. O Elasticsearch do projeto já é assim, de propósito:
 
 ```yaml
-  postgres-container:
-    image: postgres:18
-    # sem "ports": só a data-network alcança o banco
+  elasticsearch-container:
+    image: elasticsearch:8.15.0
+    # sem "ports": só a data-network alcança o Elasticsearch
     networks:
       data-network:
         aliases:
-          - postgres_host
+          - elasticsearch_host
 ```
+
+Em produção o raciocínio é o mesmo: publica-se só o que precisa ser alcançado de fora (o Nginx), e todo o resto fica **só na rede interna**.
 
 4 - Cache com Redis
 
 4.1 - O Problema: a Mesma Pergunta, o Mesmo Custo
 
-Imagine uma tela de relatório que mostra **quantas tarefas cada usuário tem e quantas concluiu**. Para montar isso, o Postgres precisa **varrer a tabela `tasks` inteira** e agrupar. Se a tabela tem meio milhão de linhas, é uma consulta cara. O problema não é fazê-la **uma vez**: é que **a resposta é a mesma** para todo mundo, e a consulta cara é repetida a cada requisição.
+O chat da Aula 10 passa a **gravar cada mensagem** no Postgres (seção 4.5), e a tela de ranking mostra **quem mais mandou mensagem**. Para montar isso, o Postgres precisa **varrer a tabela `messages` inteira** e agrupar por nome. Com poucas mensagens é barato; com dezenas de milhares de linhas, já pesa quando muita gente pede ao mesmo tempo. O problema não é fazê-la **uma vez**: é que **a resposta é a mesma** para todo mundo, e a consulta cara é repetida a cada requisição.
 
 A saída é guardar a resposta pronta **em memória**, e servir dela enquanto ela ainda vale. É o **cache**.
 
@@ -238,119 +256,258 @@ Cache guarda uma **cópia**, e cópia envelhece. Existem duas defesas:
 
 Não existe TTL "certo": ele é um **trade-off** entre dado fresco e carga no banco. Um relatório que muda pouco aceita 30 segundos; um saldo bancário não aceita cache nenhum.
 
-4.5 - O Redis no Projeto
+4.5 - As Mensagens do Chat: Tabela, Job e Fila
 
-O container entra no `data-network` (seção 3.3). A conexão fica junto das outras, em `database/connections`:
-
-```js
-// src/database/connections/redis.js
-import { createClient } from 'redis';
-import { configDotenv } from 'dotenv';
-
-configDotenv({
-    quiet: true
-});
-
-const host = process.env.REDIS_HOST || 'localhost';
-const port = process.env.REDIS_PORT || '6379';
-
-const client = createClient({
-    url: `redis://${host}:${port}`
-});
-
-client.on('error', (error) => {
-    console.error('Redis:', error.message);
-});
-
-await client.connect();
-
-export default client;
-```
-
-No `docker-compose.yml`, o `nodeweb` ganha `REDIS_HOST: redis_host` e `REDIS_PORT: 6379` no `environment`, e entra no `depends_on` do Redis.
-
-4.6 - A Rota Pesada com Cache-Aside
-
-A rota `GET /api/relatorio` faz a agregação, com o interruptor `cache:ativo` (uma chave no próprio Redis) que o professor liga e desliga **sem reiniciar nada**. Sem `else`: cada desvio sai com `return`.
+Antes do cache, precisamos do **dado**. Uma *migration* cria a tabela `messages` com `ip`, `name`, `message` e `date`:
 
 ```js
-// src/app/Http/Controllers/ReportController.js
-import { QueryTypes } from 'sequelize';
-import sequelize from '../../../database/connections/sequelize.js';
-import redis from '../../../database/connections/redis.js';
-import { cacheRequests } from '../../../utils/metrics.js';
+// src/database/migrations/004_create_messages_table.js
+export async function up(db) {
+  await db.query(`
+    CREATE TABLE messages (
+      id SERIAL PRIMARY KEY,
+      ip VARCHAR(45) NOT NULL,
+      name VARCHAR(255) NOT NULL,
+      message TEXT NOT NULL,
+      date TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `)
+}
 
-const CACHE_KEY = 'report:tasks-by-user';
-const CACHE_TTL_SECONDS = 30;
-
-export default async function ReportController(request, response) {
-    const isCacheOn = (await redis.get('cache:ativo')) === '1';
-
-    if (isCacheOn) {
-        const cached = await redis.get(CACHE_KEY);
-
-        if (cached) {
-            cacheRequests.inc({ result: 'hit' });
-            return response.json(JSON.parse(cached));
-        }
-    }
-
-    cacheRequests.inc({ result: 'miss' });
-
-    // a consulta cara: varre a tabela inteira e agrupa
-    const report = await sequelize.query(
-        `SELECT id_user,
-                COUNT(*) AS total,
-                COUNT(*) FILTER (WHERE is_done) AS concluidas
-           FROM tasks
-          GROUP BY id_user
-          ORDER BY total DESC
-          LIMIT 10`,
-        { type: QueryTypes.SELECT }
-    );
-
-    if (isCacheOn) {
-        await redis.set(CACHE_KEY, JSON.stringify(report), { EX: CACHE_TTL_SECONDS });
-    }
-
-    return response.json(report);
+export async function down(db) {
+  await db.query(`
+    DROP TABLE messages
+  `)
 }
 ```
 
-Com o cache **desligado**, toda requisição conta como *miss* e vai ao Postgres. Com ele **ligado**, só a primeira de cada janela de 30 segundos vai ao banco.
+Rodando o comando de migração no container efêmero:
 
-Para a consulta ser realmente pesada, a tabela precisa de volume. Um seed grande (ajuste o intervalo de `id_user` para ids que existem na tabela `users`):
-
-```sql
-INSERT INTO tasks (name, is_done, id_user, created_at, updated_at)
-SELECT 'Tarefa ' || n, (n % 3 = 0), 1 + (n % 20), NOW(), NOW()
-  FROM generate_series(1, 500000) AS n;
+```bash
+docker compose run --rm nodecommand-container migrate
 ```
 
-E o interruptor, protegido por um segredo da variável de ambiente (`ADMIN_TOKEN`) para os alunos não o desligarem:
+Quem **grava** não é o websocket. É a regra da Aula 10: o websocket só conecta e distribui, e o que persiste vai para um **worker pelo mesmo RabbitMQ**. O Event faz o `dispatch` de um job na fila `save-message`, e um worker dedicado consome só essa fila:
+
+```js
+// src/app/Events/Chat/ChatMessageEvent.js (acrescentar, depois do notify)
+await SaveMessageJob.dispatch('save-message', { ip: ipOf(context.socket), name, message, sentAt })
+```
+
+```js
+// src/app/Jobs/SaveMessageJob.js
+import { createJob } from '../../utils/job.js'
+import MessageModel from '../Models/MessageModel.js'
+
+export default createJob({
+    name: 'SaveMessageJob',
+    handle: async (payload) => {
+        const { ip, name, message, sentAt } = payload
+
+        await MessageModel.create({ ip, name, message, date: new Date(sentAt) })
+
+        console.log(`Mensagem de ${name} (${ip}) salva no Postgres`)
+    }
+})
+```
+
+No compose, um segundo worker da **mesma imagem** recebe o argumento `--queue save-message` no `command`, e o worker de antes continua na fila `default`:
+
+```yaml
+  nodeworkersavemessage-container:
+    build:
+      context: .
+      dockerfile: docker/node-worker/Dockerfile
+    command: ["--queue", "save-message"]   # argumento do entrypoint: a fila deste worker
+    networks:
+      data-network:
+        aliases:
+          - nodeworkersavemessage_host
+```
+
+Uma pegadinha: o `dispatch` fechava a conexão do RabbitMQ ao terminar, o que serve a um controller (processo curto). No websocket a conexão **já está aberta** (ele assina o exchange), e fechá-la derrubaria o chat inteiro. Por isso o `dispatch` agora só fecha a conexão que **ele mesmo abriu** (`rabbit.isConnected()`).
+
+Para o ranking pesar, precisa de volume de dados. Um seed grande:
+
+```sql
+INSERT INTO messages (ip, name, message, date)
+SELECT '192.168.0.' || (1 + n % 50),
+       'Aluno ' || (1 + n % 40),
+       'mensagem ' || n,
+       NOW() - (n || ' seconds')::interval
+  FROM generate_series(1, 50000) AS n;
+```
+
+4.6 - O Redis no Projeto
+
+O container entra no `data-network` (seção 3.3), com a porta `6375` publicada no host para inspecionar com `redis-cli -p 6375`. A conexão fica junto das outras, em `database/connections`. Ela **conecta só no primeiro uso**: importar o módulo não derruba o processo se o Redis estiver fora, e a mesma conexão é reaproveitada.
+
+```js
+// src/database/connections/redis.js
+import { configDotenv } from 'dotenv'
+import { createClient } from 'redis'
+
+export default (() => {
+    configDotenv({
+        quiet: true
+    })
+
+    const isDocker = process.env.IS_DOCKER === 'true'
+    const redisHost = process.env.REDIS_HOST || (isDocker ? 'redis_host' : 'localhost')
+    const redisPort = process.env.REDIS_PORT || '6379'
+
+    const client = createClient({
+        url: `redis://${redisHost}:${redisPort}`
+    })
+
+    client.on('error', (error) => {
+        console.error('Redis:', error.message)
+    })
+
+    // Conecta só no primeiro uso; se falhar, a próxima chamada tenta de novo
+    let connecting = null
+
+    const connect = () => {
+        connecting = connecting ?? client.connect().catch((error) => {
+            connecting = null
+            throw error
+        })
+
+        return connecting
+    }
+
+    const get = async (key) => {
+        await connect()
+        return client.get(key)
+    }
+
+    // ttlSeconds: a chave expira sozinha (o TTL do cache)
+    const set = async (key, value, ttlSeconds) => {
+        await connect()
+        return client.set(key, value, { expiration: { type: 'EX', value: ttlSeconds } })
+    }
+
+    const del = async (key) => {
+        await connect()
+        return client.del(key)
+    }
+
+    return { get, set, del }
+})()
+```
+
+No `docker-compose.yml`, o `nodeweb`, o `nodecommand` e os workers ganham `REDIS_HOST: redis_host` e `REDIS_PORT: 6379` no `environment` e entram no `depends_on` do Redis. A variável do **host** se chama `REDIS_HOST_PORT` (e não `REDIS_PORT`) para não colidir com a porta **interna** que os apps usam.
+
+4.7 - A Rota Pesada com Cache-Aside
+
+A rota `GET /api/relatorio` devolve o ranking do chat, com o interruptor `cache:ativo` (uma chave no próprio Redis) que o professor liga e desliga **sem reiniciar nada**. Sem `else`: cada desvio sai com `return`. A consulta cara fica num *service*:
+
+```js
+// src/app/Services/ChatReportService.js
+import { QueryTypes } from 'sequelize'
+import sequelize from '../../database/connections/sequelize.js'
+
+export default {
+    async ranking() {
+        return sequelize.query(
+            `SELECT name,
+                    COUNT(*) AS total,
+                    MAX(date) AS last_message_at
+               FROM messages
+              GROUP BY name
+              ORDER BY total DESC
+              LIMIT 10`,
+            { type: QueryTypes.SELECT }
+        )
+    }
+}
+```
+
+```js
+// src/app/Http/Controllers/ReportController.js
+import redis from '../../../database/connections/redis.js'
+import ChatReportService from '../../Services/ChatReportService.js'
+import { cacheRequests } from '../../../utils/metrics.js'
+
+const CACHE_KEY = 'report:chat-ranking'
+const CACHE_TTL_SECONDS = 30
+
+export default async function ReportController(request, response) {
+    try {
+        const isCacheOn = (await redis.get('cache:ativo')) === '1'
+
+        if (isCacheOn) {
+            const cached = await redis.get(CACHE_KEY)
+
+            if (cached) {
+                cacheRequests.inc({ result: 'hit' })
+                response.set('X-Cache', 'HIT')
+                return response.json(JSON.parse(cached))
+            }
+        }
+
+        const ranking = await ChatReportService.ranking()
+
+        if (isCacheOn) {
+            await redis.set(CACHE_KEY, JSON.stringify(ranking), CACHE_TTL_SECONDS)
+        }
+
+        cacheRequests.inc({ result: 'miss' })
+        response.set('X-Cache', 'MISS')
+        return response.json(ranking)
+    } catch (error) {
+        console.error(error)
+
+        return response.status(500).json({
+            error: 'Internal server error'
+        })
+    }
+}
+```
+
+O header `X-Cache: HIT` ou `MISS` diz **de onde veio a resposta**: o botão do chat (seção 6.2) o usa para contar os acertos. Com o cache **desligado**, toda requisição conta como *miss* e vai ao Postgres. Com ele **ligado**, só a primeira de cada janela de 30 segundos vai ao banco.
+
+O interruptor é protegido por um segredo da variável de ambiente (`ADMIN_TOKEN`), para os alunos não o desligarem. Sem `ADMIN_TOKEN` configurado, **ninguém** entra:
 
 ```js
 // src/app/Http/Middlewares/AdminMiddleware.js
 export default function AdminMiddleware(request, response, next) {
-    if (request.headers['x-admin-token'] !== process.env.ADMIN_TOKEN) {
-        return response.status(401).json({ error: 'Unauthorized' });
+    const token = process.env.ADMIN_TOKEN
+
+    if (!token || request.headers['x-admin-token'] !== token) {
+        return response.status(401).json({ error: 'Unauthorized' })
     }
 
-    return next();
+    return next()
 }
 ```
 
 ```js
 // src/app/Http/Controllers/ToggleCacheController.js
-import redis from '../../../database/connections/redis.js';
+import redis from '../../../database/connections/redis.js'
 
 export default async function ToggleCacheController(request, response) {
-    const isActive = request.body.ativo === true;
+    try {
+        const isActive = request.body?.ativo === true
 
-    await redis.set('cache:ativo', isActive ? '1' : '0');
+        // a flag vale por 24 h; depois expira e o cache volta a ficar desligado
+        await redis.set('cache:ativo', isActive ? '1' : '0', 60 * 60 * 24)
 
-    return response.json({ ativo: isActive });
+        return response.json({ ativo: isActive })
+    } catch (error) {
+        console.error(error)
+
+        return response.status(500).json({
+            error: 'Internal server error'
+        })
+    }
 }
+```
+
+```js
+// src/routes/router.js (acrescentar)
+router.get('/api/relatorio', ReportController);
+router.post('/api/admin/cache', AdminMiddleware, ToggleCacheController);
 ```
 
 O professor liga e desliga do terminal, na frente da sala:
@@ -361,6 +518,9 @@ curl -X POST http://localhost:8080/api/admin/cache -H "x-admin-token: $ADMIN_TOK
 
 # desliga o cache
 curl -X POST http://localhost:8080/api/admin/cache -H "x-admin-token: $ADMIN_TOKEN" -H "Content-Type: application/json" -d '{"ativo": false}'
+
+# confere o estado: 1 = ligado, 0 = desligado, vazio = nunca ligado (vale desligado)
+redis-cli -p 6375 get cache:ativo
 ```
 
 5 - Observabilidade
@@ -388,7 +548,7 @@ O fluxo: o `nodeweb` **expõe** o `/metrics`, o Prometheus **coleta**, o Grafana
 
 5.3 - Expondo as Métricas no Express
 
-A biblioteca `prom-client` cria as métricas e formata o texto que o Prometheus lê. Duas métricas próprias: um **histograma** da duração das requisições e um **contador** de acertos e erros do cache.
+A biblioteca `prom-client` cria as métricas e formata o texto que o Prometheus lê. As métricas ficam **na memória do processo** `nodeweb` (poucos números, que só crescem), e o Prometheus **vem buscá-las**. Duas métricas próprias: um **histograma** da duração das requisições e um **contador** de acertos e erros do cache.
 
 ```js
 // src/utils/metrics.js
@@ -415,40 +575,44 @@ export const cacheRequests = new Counter({
 });
 ```
 
-Um middleware mede cada requisição, e a rota `/metrics` entrega o texto:
+Um middleware mede cada requisição, e a rota `/metrics` entrega o texto. Cuidado com o *label* `route`: ele usa o **padrão da rota** (`/api/relatorio`), nunca a URL com ids, porque cada valor novo de *label* vira uma **série nova** e a memória cresceria sem parar:
 
 ```js
 // src/app/Http/Middlewares/MetricsMiddleware.js
-import { httpDuration } from '../../../utils/metrics.js';
+import { httpDuration } from '../../../utils/metrics.js'
 
 export default function MetricsMiddleware(request, response, next) {
-    const stopTimer = httpDuration.startTimer();
+    const stopTimer = httpDuration.startTimer()
 
     response.on('finish', () => {
-        const route = request.route?.path || 'outras';
+        const route = request.route ? request.baseUrl + request.route.path : 'outras'
 
         stopTimer({
             method: request.method,
             route: route,
             status: response.statusCode
-        });
-    });
+        })
+    })
 
-    return next();
+    return next()
+}
+```
+
+```js
+// src/app/Http/Controllers/MetricsController.js
+import { register } from '../../../utils/metrics.js'
+
+export default async function MetricsController(request, response) {
+    response.set('Content-Type', register.contentType)
+
+    return response.end(await register.metrics())
 }
 ```
 
 ```js
 // src/routes/router.js (acrescentar)
-import { register } from '../utils/metrics.js';
-import MetricsMiddleware from '../app/Http/Middlewares/MetricsMiddleware.js';
-
 router.use(MetricsMiddleware);
-
-router.get('/metrics', async (request, response) => {
-    response.set('Content-Type', register.contentType);
-    return response.end(await register.metrics());
-});
+router.get('/metrics', MetricsController);
 ```
 
 5.4 - O /metrics Não Pode Ser Público
@@ -464,7 +628,7 @@ location = /metrics {
 
 5.5 - Prometheus e Grafana no Compose
 
-Os dois containers entram no compose; as configurações ficam em arquivos montados como volume, para o painel subir **pronto**, sem clicar em nada:
+Os dois containers entram no compose; as configurações ficam em arquivos montados como pasta do seu PC, para o painel subir **pronto**, sem clicar em nada. O histórico do Prometheus e o banco interno do Grafana (usuários e senha) ficam em **volumes**, para sobreviverem a um `docker compose down`:
 
 ```yaml
 # docker/prometheus/prometheus.yml
@@ -473,8 +637,9 @@ global:
 
 scrape_configs:
   - job_name: nodeweb
+    metrics_path: /metrics
     static_configs:
-      - targets: ["nodeweb_host:3000"]   # nome do alias na data-network
+      - targets: ["nodeweb_host:3000"]   # alias do nodeweb na data-network (não passa pelo nginx)
 ```
 
 ```yaml
@@ -482,8 +647,13 @@ scrape_configs:
   prometheus-container:
     image: prom/prometheus:v3.5.0
     restart: unless-stopped
+    depends_on:
+      - nodeweb-container
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
     volumes:
-      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml   # configuração (lê)
+      - prometheus-volume:/prometheus                                       # as séries (escreve)
     networks:
       data-network:
         aliases:
@@ -492,34 +662,65 @@ scrape_configs:
   grafana-container:
     image: grafana/grafana:12.1.0
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD}
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      POSTGRES_HOST: postgres_host
+      POSTGRES_PORT: 5432
     ports:
-      - "${GRAFANA_PORT}:3000"
+      - "${GRAFANA_PORT:-3002}:3000"
     volumes:
-      - ./docker/grafana/provisioning:/etc/grafana/provisioning
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning   # fontes de dados e dashboard
+      - grafana-volume:/var/lib/grafana                           # usuários, senha, preferências
     networks:
-      - edge-network
-      - data-network
+      edge-network:
+        aliases:
+          - grafana_host
+      data-network:
+        aliases:
+          - grafana_host
+
+volumes:
+  prometheus-volume:
+  grafana-volume:
 ```
 
+O Grafana está nos **dois** networks: na borda, porque o professor o abre no navegador; nos dados, porque ele precisa alcançar o Prometheus e o Postgres. O acesso é `http://localhost:3002`, com usuário `admin` e a senha de `GRAFANA_PASSWORD` (padrão `admin`; ela só vale se definida **antes** da primeira subida, porque depois fica gravada no `grafana-volume`).
+
+O Grafana **não guarda nada** das métricas: ele só consulta. As **fontes de dados** são criadas na subida, por *provisioning*: o Prometheus (as métricas) e o Postgres (as mensagens do chat):
+
 ```yaml
-# docker/grafana/provisioning/datasources/prometheus.yml
+# docker/grafana/provisioning/datasources/datasources.yml
 apiVersion: 1
 
 datasources:
   - name: Prometheus
+    uid: prometheus
     type: prometheus
     access: proxy
     url: http://prometheus_host:9090
     isDefault: true
+
+  - name: Postgres
+    uid: postgres
+    type: grafana-postgresql-datasource
+    access: proxy
+    url: postgres_host:5432
+    user: $POSTGRES_USER
+    jsonData:
+      database: $POSTGRES_DB
+      sslmode: disable
+    secureJsonData:
+      password: $POSTGRES_PASSWORD
 ```
 
-O Grafana está nos **dois** networks: na borda, porque o professor o abre no navegador; nos dados, porque ele precisa alcançar o Prometheus.
+O dashboard também vem pronto, em JSON (`docker/grafana/provisioning/dashboards/cache-observabilidade.json`). **Cada painel é uma consulta que escrevemos**, apontando para uma das duas fontes: **PromQL** para o Prometheus e **SQL** para o Postgres.
 
 5.6 - As Consultas do Painel
 
-O painel tem três gráficos, cada um com uma consulta em PromQL:
+O dashboard tem seis painéis. Os quatro primeiros usam PromQL no Prometheus; os dois últimos usam SQL no Postgres:
 
 ```text
 # requisições por segundo (média do último minuto)
@@ -530,9 +731,25 @@ histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[1m])) by 
 
 # taxa de acerto do cache (0 a 1)
 sum(rate(cache_requests_total{result="hit"}[1m])) / sum(rate(cache_requests_total[1m]))
+
+# hits e misses por segundo (um gráfico com as duas linhas)
+sum(rate(cache_requests_total[1m])) by (result)
+```
+
+```sql
+-- mensagens por minuto (fonte Postgres)
+SELECT date_trunc('minute', date) AS time, COUNT(*) AS mensagens
+  FROM messages
+ GROUP BY 1
+ ORDER BY 1;
+
+-- log das mensagens do chat: as últimas gravadas pelo job save-message
+SELECT date, name, ip, message FROM messages ORDER BY date DESC LIMIT 100;
 ```
 
 A latência aparece como **p95** e não como média porque a média **esconde as requisições lentas**: se 95 requisições levam 10 ms e 5 levam 2 segundos, a média parece aceitável, mas 5% dos usuários sentiram uma lentidão enorme. O histograma guarda a **contagem por faixa de tempo** (*buckets*), e é isso que permite calcular o percentil.
+
+Duas perguntas que costumam surgir: o **Prometheus não lê `stderr` nem recebe nada**: quem busca é ele (*pull*), no `/metrics`; e os contadores **não são zerados** quando ele coleta: o valor acumulado fica na memória do `nodeweb`, e o histórico fica no disco do Prometheus (`prometheus-volume`). Se o `nodeweb` reiniciar, o contador volta a zero, e o `rate()` trata isso como reinício.
 
 6 - A Demonstração: a Sala Vira o Tráfego
 
@@ -541,73 +758,81 @@ A latência aparece como **p95** e não como média porque a média **esconde as
 Todos os alunos abrem a aplicação pelo IP do notebook do professor na rede da sala. O painel do Grafana fica no projetor. O roteiro tem três atos:
 
 1. **Cache desligado:** a sala toda clica em "disparar 50 requisições". A taxa de requisições sobe, a latência p95 dispara, a taxa de acerto do cache fica em **zero**, e o Postgres é martelado a cada clique;
-2. **Cache ligado:** o professor liga o interruptor (`curl` da seção 4.6). Nada mais muda: o mesmo botão, o mesmo código. A taxa de acerto sobe, a latência **despenca**, o Postgres respira;
-3. **A prova de segmentação:** cada aluno tenta, do próprio notebook, conectar na porta `5432` do notebook do professor. Com o `ports:` removido (seção 3.5), a conexão é **recusada**: só o Nginx é alcançável de fora.
+2. **Cache ligado:** o professor liga o interruptor (`curl` da seção 4.7). Nada mais muda: o mesmo botão, o mesmo código. A taxa de acerto sobe, a latência **despenca**, o Postgres respira;
+3. **A prova de que network não é porta:** cada aluno tenta, do próprio notebook, conectar na porta do Redis (`6375`) do notebook do professor. A conexão **funciona**, porque o `ports:` abriu a porta no host (seção 3.5), mesmo com o Redis na `data-network`. Para fechar, tira-se o `ports:`.
 
 6.2 - O Botão no React
 
-O front dispara 50 requisições de uma vez e mostra o resumo na tela de **cada aluno**. Segue as convenções do código React do curso: só `const`, booleano com `is`, e o *handler* de clique **explícito**.
+O botão fica **dentro do chat**, abaixo da lista de quem está online. Ele dispara 50 requisições de uma vez e mostra o resumo na tela de **cada aluno**: quantas deram certo, quantas vieram do cache (pelo header `X-Cache`) e o tempo médio. Segue as convenções do código React do curso: só `const`, booleano com `is`, e o *handler* de clique **explícito**.
 
 ```tsx
 // src/resources/js/components/LoadButton.tsx
-import { useState } from 'react';
-import axios from 'axios';
+import { useState } from "react"
+import axios from "axios"
+
+type Result = { ms: number, isHit: boolean } | null
 
 type Summary = {
-    ok: number;
-    errors: number;
-    average: number;
-};
+    ok: number
+    errors: number
+    hits: number
+    averageMs: number
+}
 
-const TOTAL_REQUESTS = 50;
+const TOTAL_REQUESTS = 50
 
-// devolve o tempo da requisição em ms, ou null se falhou
-const measure = async (): Promise<number | null> => {
-    const start = performance.now();
+// Uma requisição ao ranking do chat: devolve o tempo (ms) e se veio do cache (header X-Cache), ou null se falhou
+async function measure(): Promise<Result> {
+    const start = performance.now()
 
     try {
-        await axios.get('/api/relatorio');
-        return performance.now() - start;
-    } catch (error) {
-        return null;
+        const response = await axios.get("/api/relatorio")
+
+        return { ms: performance.now() - start, isHit: response.headers["x-cache"] === "HIT" }
+    } catch {
+        return null
     }
-};
+}
 
-export default function LoadButton() {
-    const [isLoading, setIsLoading] = useState(false);
-    const [summary, setSummary] = useState<Summary | null>(null);
+export function LoadButton() {
+    const [isLoading, setIsLoading] = useState(false)
+    const [summary, setSummary] = useState<Summary | null>(null)
 
-    const handleClick = async () => {
-        setIsLoading(true);
+    // Clique: dispara TOTAL_REQUESTS requisições de uma vez e resume o resultado na tela
+    async function aoDispararRequisicoes() {
+        setIsLoading(true)
 
-        const results = await Promise.all(
-            Array.from({ length: TOTAL_REQUESTS }, () => measure())
-        );
-
-        const times = results.filter((time): time is number => time !== null);
-        const total = times.reduce((sum, time) => sum + time, 0);
-        const average = times.length > 0 ? total / times.length : 0;
+        const results = await Promise.all(Array.from({ length: TOTAL_REQUESTS }, () => measure()))
+        const done = results.filter((result): result is NonNullable<Result> => result !== null)
+        const total = done.reduce((sum, result) => sum + result.ms, 0)
+        const average = done.length > 0 ? total / done.length : 0
 
         setSummary({
-            ok: times.length,
-            errors: TOTAL_REQUESTS - times.length,
-            average: Math.round(average)
-        });
-
-        setIsLoading(false);
-    };
+            ok: done.length,
+            errors: TOTAL_REQUESTS - done.length,
+            hits: done.filter(result => result.isHit).length,
+            averageMs: Math.round(average)
+        })
+        setIsLoading(false)
+    }
 
     return (
-        <div>
-            <button onClick={handleClick} disabled={isLoading}>
-                {isLoading ? 'Disparando...' : `Disparar ${TOTAL_REQUESTS} requisições`}
-            </button>
+        <div className="card mt-3">
+            <div className="card-header"><strong>Carga na API</strong></div>
 
-            {summary && (
-                <p>{summary.ok} ok, {summary.errors} erros, média de {summary.average} ms</p>
-            )}
+            <div className="card-body d-flex flex-column gap-2">
+                <button className="btn btn-warning" type="button" disabled={isLoading} onClick={aoDispararRequisicoes}>
+                    {isLoading ? "Disparando..." : `Disparar ${TOTAL_REQUESTS} requisições`}
+                </button>
+
+                {summary && (
+                    <small className="text-muted">
+                        {summary.ok} ok · {summary.errors} erros · {summary.hits} do cache · média de {summary.averageMs} ms
+                    </small>
+                )}
+            </div>
         </div>
-    );
+    )
 }
 ```
 
