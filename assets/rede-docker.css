@@ -368,6 +368,7 @@ h1 .accent{ color: var(--accent); }
   .stage > [data-id="p6789"]{ --x:44 !important;--y:854 !important;--w:120 !important;--h:32 !important; }
   .stage > [data-id="p15672"]{ --x:376 !important;--y:854 !important;--w:130 !important;--h:32 !important; }
   .stage > [data-id="p5672"]{ --x:516 !important;--y:854 !important;--w:120 !important;--h:32 !important; }
+  .stage > [data-id="p6375"]{ --x:376 !important;--y:984 !important;--w:130 !important;--h:32 !important; }
   .stage > [data-id="p9090"]{ --x:44 !important;--y:1114 !important;--w:112 !important;--h:32 !important; }
   .stage > [data-id="nginx"]{ --x:24 !important;--y:310 !important;--w:280 !important;--h:100 !important; }
   .stage > [data-id="vitehmr"]{ --x:356 !important;--y:310 !important;--w:280 !important;--h:100 !important; }

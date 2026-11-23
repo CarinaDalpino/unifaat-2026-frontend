@@ -257,10 +257,12 @@ services:
         aliases:
           - rabbitmq_host
 
-  #REDIS (cache): sem "ports", só a rede interna alcança; sem volume, cache se perde e se refaz
+  #REDIS (cache): porta publicada no host para inspecionar (redis-cli, RedisInsight); sem volume, cache se perde e se refaz
   redis-container:
     image: redis:7.4-alpine
     restart: unless-stopped
+    ports:
+      - "${REDIS_HOST_PORT:-6375}:6379"
     networks:
       data-network:
         aliases:
