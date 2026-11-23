@@ -351,3 +351,52 @@ h1 .accent{ color: var(--accent); }
 }
 
 .item.container small{ color: var(--muted); }
+
+/* ── celular: layout vertical, palco fixo de 660 px (o desktop não muda) ── */
+.stage > svg.netshape.netshape-m{ display: none; }
+@media (max-width: 700px){
+  .stage{ min-width: 0; width: 660px; height: 1610px; aspect-ratio: auto; }
+  .stage > *{
+    left: calc(var(--x) * 1px); top: calc(var(--y) * 1px);
+    width: calc(var(--w) * 1px); height: calc(var(--h) * 1px);
+  }
+  .stage > [data-id="browser"]{ --x:24 !important;--y:50 !important;--w:150 !important;--h:56 !important; }
+  .stage > [data-id="tools"]{ --x:356 !important;--y:50 !important;--w:280 !important;--h:56 !important; }
+  .stage > [data-id="p8080"]{ --x:44 !important;--y:282 !important;--w:104 !important;--h:32 !important; }
+  .stage > [data-id="p5172"]{ --x:376 !important;--y:282 !important;--w:120 !important;--h:32 !important; }
+  .stage > [data-id="p3002"]{ --x:44 !important;--y:689 !important;--w:130 !important;--h:32 !important; }
+  .stage > [data-id="p6789"]{ --x:44 !important;--y:854 !important;--w:120 !important;--h:32 !important; }
+  .stage > [data-id="p15672"]{ --x:376 !important;--y:854 !important;--w:130 !important;--h:32 !important; }
+  .stage > [data-id="p5672"]{ --x:516 !important;--y:854 !important;--w:120 !important;--h:32 !important; }
+  .stage > [data-id="p9090"]{ --x:44 !important;--y:1114 !important;--w:112 !important;--h:32 !important; }
+  .stage > [data-id="nginx"]{ --x:24 !important;--y:310 !important;--w:280 !important;--h:100 !important; }
+  .stage > [data-id="vitehmr"]{ --x:356 !important;--y:310 !important;--w:280 !important;--h:100 !important; }
+  .stage > [data-id="vitecompiler"]{ --x:356 !important;--y:440 !important;--w:280 !important;--h:100 !important; }
+  .stage > [data-id="nodeweb"]{ --x:24 !important;--y:575 !important;--w:280 !important;--h:100 !important; }
+  .stage > [data-id="nodewebsocket"]{ --x:356 !important;--y:575 !important;--w:280 !important;--h:100 !important; }
+  .stage > [data-id="grafana"]{ --x:24 !important;--y:705 !important;--w:280 !important;--h:100 !important; }
+  .stage > [data-id="postgres"]{ --x:24 !important;--y:870 !important;--w:280 !important;--h:100 !important; }
+  .stage > [data-id="rabbitmq"]{ --x:356 !important;--y:870 !important;--w:280 !important;--h:100 !important; }
+  .stage > [data-id="elasticsearch"]{ --x:24 !important;--y:1000 !important;--w:280 !important;--h:100 !important; }
+  .stage > [data-id="redis"]{ --x:356 !important;--y:1000 !important;--w:280 !important;--h:100 !important; }
+  .stage > [data-id="prometheus"]{ --x:24 !important;--y:1130 !important;--w:280 !important;--h:100 !important; }
+  .stage > [data-id="nodeworker"]{ --x:356 !important;--y:1130 !important;--w:280 !important;--h:100 !important; }
+  .stage > [data-id="nodecommand"]{ --x:24 !important;--y:1260 !important;--w:280 !important;--h:100 !important; }
+  .stage > [data-id="phone"]{ --x:24 !important;--y:1470 !important;--w:190 !important;--h:72 !important; }
+  .stage > [data-id="peer"]{ --x:240 !important;--y:1470 !important;--w:230 !important;--h:72 !important; }
+  .stage > .host-box{ --x:0 !important;--y:0 !important;--w:660 !important;--h:1390 !important; }
+  .stage > .lan-box{ --x:0 !important;--y:1410 !important;--w:660 !important;--h:190 !important; }
+  .stage > .host-title{ --x:28 !important;--y:14 !important;--w:300 !important;--h:30 !important; }
+  .stage > svg.netshape{ display: none; }
+  .stage > svg.netshape.netshape-m{ display: block; }
+  .item{ font-size: 13px; }
+  .port{ font-size: 12px; }
+  .client .addr{ font-size: 11px; }
+  .lan-title{ font-size: 11px; left: 14px; right: 14px; top: auto; bottom: 10px; text-align: right; }
+  .legend span{ display: inline; }
+  .legend i{ margin-right: 6px; }
+  .host-title{ font-size: 14px; }
+  /* volumes, pastas e badges ficam só no desktop (e no texto do painel) */
+  .volume, .bind, .container .mount-badge, .wire.m-volume, .wire.m-bind, .pulse.m-volume, .pulse.m-bind{ display: none !important; }
+  [data-layer="vol"], [data-layer="bind"]{ display: none; }
+}

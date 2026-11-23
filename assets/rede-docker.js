@@ -4,6 +4,24 @@
    quando o tamanho muda). Sem else: early return / continue. */
 (function(){
   var W = 2100;
+  /* celular (≤ 700 px): palco vertical fixo de 660 px; fios com pontos próprios (o desktop não usa) */
+  var mobileMq = window.matchMedia('(max-width: 700px)');
+  var MOBILE_W = 660;
+  var MOBILE_POINTS = {
+    'b-grafana': [[3, 78], [3, 705]],
+    'b-prom': [[7, 78], [7, 1130]],
+    'b-15672': [[99, 134], [345, 134], [345, 870]],
+    'tools-5672': [[644, 78], [644, 870]],
+    'tools-6789': [[340, 78], [340, 118], [11, 118], [11, 870]],
+    'peer-8080': [[355, 1435], [15, 1435], [15, 290]],
+    'phone-8080': [[119, 1450], [19, 1450], [19, 300]],
+    'peer-5172': [[400, 1440], [650, 1440], [650, 298]],
+    'nginx-ws': [[322, 430], [322, 625]]
+  };
+  function pointsOf(edge){
+    if(!mobileMq.matches){ return edge.points || []; }
+    return MOBILE_POINTS[edge.id.replace(/-t$/, '')] || [];
+  }
   var stage = document.getElementById('stage');
   var svg = document.getElementById('wires');
   var NS = 'http://www.w3.org/2000/svg';
@@ -235,7 +253,7 @@
   var labels = {};
 
   function draw(){
-    var k = stage.clientWidth / W;
+    var k = stage.clientWidth / (mobileMq.matches ? MOBILE_W : W);
     svg.innerHTML = '';
     tubes = {};
     svg.setAttribute('viewBox', '0 0 ' + stage.clientWidth + ' ' + stage.clientHeight);
@@ -259,7 +277,7 @@
       /* volume interno (src): a seta sai do badge "volume:destino" do container */
       var a = box(edge.anchor ? edge.to : (edge.src || edge.from));
       var b = box(edge.anchor ? edge.anchor : edge.to);
-      var mids = (edge.points || []).map(function(p){ return [p[0] * k, p[1] * k]; });
+      var mids = pointsOf(edge).map(function(p){ return [p[0] * k, p[1] * k]; });
       var first = mids.length ? mids[0] : [b.cx, b.cy];
       var last = mids.length ? mids[mids.length - 1] : [a.cx, a.cy];
       var gapEnd = 4;
